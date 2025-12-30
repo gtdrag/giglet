@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Giglet - Design Direction Mockups</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      color: #888;
+      font-size: 1.1rem;
+    }
+
+    .directions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 30px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .direction-card {
+      background: #111;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid #222;
+    }
+
+    .direction-header {
+      padding: 20px;
+      border-bottom: 1px solid #222;
+    }
+
+    .direction-header h2 {
+      font-size: 1.3rem;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .direction-header h2 .badge {
+      font-size: 0.7rem;
+      background: #06B6D4;
+      color: #000;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .direction-header .personality {
+      color: #06B6D4;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .direction-header .description {
+      color: #888;
+      font-size: 0.85rem;
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+
+    .traits {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .trait {
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #1a1a1a;
+      color: #888;
+    }
+
+    /* Phone Mockup */
+    .phone-container {
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .phone {
+      width: 280px;
+      height: 560px;
+      background: #09090B;
+      border-radius: 36px;
+      border: 3px solid #333;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    .phone-notch {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 28px;
+      background: #000;
+      border-radius: 0 0 20px 20px;
+      z-index: 100;
+    }
+
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Map Background */
+    .map-bg {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+    }
+
+    .map-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    .map-roads {
+      position: absolute;
+      inset: 0;
+    }
+
+    .road {
+      position: absolute;
+      background: rgba(255,255,255,0.08);
+    }
+
+    .road-h1 { height: 3px; width: 100%; top: 30%; }
+    .road-h2 { height: 2px; width: 80%; top: 55%; left: 10%; }
+    .road-h3 { height: 2px; width: 60%; top: 75%; left: 20%; }
+    .road-v1 { width: 3px; height: 100%; left: 25%; }
+    .road-v2 { width: 2px; height: 70%; left: 50%; top: 15%; }
+    .road-v3 { width: 2px; height: 80%; left: 75%; top: 10%; }
+
+    /* Zone Overlays */
+    .zone {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.6;
+    }
+
+    .zone-hot {
+      background: radial-gradient(circle, rgba(239,68,68,0.8) 0%, rgba(249,115,22,0.4) 50%, transparent 70%);
+    }
+
+    .zone-warm {
+      background: radial-gradient(circle, rgba(249,115,22,0.7) 0%, rgba(234,179,8,0.3) 50%, transparent 70%);
+    }
+
+    .zone-cool {
+      background: radial-gradient(circle, rgba(14,165,233,0.6) 0%, rgba(6,182,212,0.3) 50%, transparent 70%);
+    }
+
+    /* User Location */
+    .user-location {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: #06B6D4;
+      border-radius: 50%;
+      border: 3px solid #fff;
+      box-shadow: 0 0 20px rgba(6,182,212,0.6);
+      z-index: 50;
+    }
+
+    .user-pulse {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background: rgba(6,182,212,0.2);
+      border-radius: 50%;
+      transform: translate(-12px, -12px);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: translate(-12px, -12px) scale(1); opacity: 0.6; }
+      100% { transform: translate(-12px, -12px) scale(1.5); opacity: 0; }
+    }
+
+    /* Status Bar */
+    .status-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 44px;
+      padding: 12px 20px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      font-size: 12px;
+      font-weight: 600;
+      z-index: 90;
+    }
+
+    .status-bar-bg {
+      background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%);
+    }
+
+    /* Bottom Tab Bar */
+    .tab-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 80px;
+      background: rgba(24,24,27,0.95);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid #27272A;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding-bottom: 20px;
+      z-index: 80;
+    }
+
+    .tab-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      color: #71717A;
+    }
+
+    .tab-item.active {
+      color: #06B6D4;
+    }
+
+    .tab-icon {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    /* Floating Elements */
+    .earnings-pill {
+      position: absolute;
+      top: 54px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(24,24,27,0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 30px;
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #27272A;
+      z-index: 70;
+    }
+
+    .earnings-pill .amount {
+      font-size: 18px;
+      font-weight: 700;
+      color: #22C55E;
+    }
+
+    .earnings-pill .label {
+      font-size: 11px;
+      color: #71717A;
+    }
+
+    .recommendation-banner {
+      position: absolute;
+      bottom: 96px;
+      left: 12px;
+      right: 12px;
+      background: #06B6D4;
+      color: #000;
+      padding: 14px 16px;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 70;
+      box-shadow: 0 4px 20px rgba(6,182,212,0.4);
+    }
+
+    .recommendation-banner .arrow {
+      font-size: 20px;
+    }
+
+    .recommendation-banner .score {
+      margin-left: auto;
+      background: rgba(0,0,0,0.2);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    /* Zone Score Floating */
+    .zone-score-float {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      z-index: 60;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .score-hot { background: linear-gradient(135deg, #EF4444, #F97316); }
+    .score-warm { background: linear-gradient(135deg, #F97316, #EAB308); color: #000; }
+    .score-cool { background: linear-gradient(135deg, #0EA5E9, #06B6D4); }
+
+    /* Bottom Sheet */
+    .bottom-sheet {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #18181B;
+      border-radius: 20px 20px 0 0;
+      padding: 12px 20px 30px;
+      z-index: 80;
+    }
+
+    .sheet-handle {
+      width: 40px;
+      height: 4px;
+      background: #3F3F46;
+      border-radius: 2px;
+      margin: 0 auto 16px;
+    }
+
+    .sheet-content h3 {
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+
+    .sheet-stats {
+      display: flex;
+      gap: 16px;
+    }
+
+    .stat-item {
+      flex: 1;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #22C55E;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: #71717A;
+    }
+
+    /* Floating Card */
+    .floating-card {
+      position: absolute;
+      bottom: 96px;
+      left: 12px;
+      right: 12px;
+      background: rgba(24,24,27,0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 16px;
+      border: 1px solid #27272A;
+      z-index: 70;
+    }
+
+    .floating-card .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .floating-card .earnings-lg {
+      font-size: 28px;
+      font-weight: 700;
+      color: #22C55E;
+    }
+
+    .floating-card .mileage {
+      font-size: 13px;
+      color: #71717A;
+    }
+
+    .floating-card .mileage span {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .rec-bar {
+      background: #06B6D4;
+      color: #000;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Split View */
+    .split-map {
+      height: 55%;
+    }
+
+    .split-panel {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 45%;
+      background: #18181B;
+      padding: 20px;
+      z-index: 80;
+    }
+
+    .split-panel .section-title {
+      font-size: 12px;
+      color: #71717A;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .split-panel .big-earnings {
+      font-size: 36px;
+      font-weight: 700;
+      color: #22C55E;
+      margin-bottom: 4px;
+    }
+
+    .split-panel .sub-label {
+      font-size: 12px;
+      color: #71717A;
+      margin-bottom: 20px;
+    }
+
+    .mini-rec {
+      background: rgba(6,182,212,0.15);
+      border: 1px solid rgba(6,182,212,0.3);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .mini-rec .icon {
+      width: 40px;
+      height: 40px;
+      background: #06B6D4;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .mini-rec .text {
+      flex: 1;
+    }
+
+    .mini-rec .title {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .mini-rec .subtitle {
+      font-size: 11px;
+      color: #71717A;
+    }
+
+    /* FAB Style */
+    .fab {
+      position: absolute;
+      bottom: 100px;
+      right: 16px;
+      width: 56px;
+      height: 56px;
+      background: #06B6D4;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: #000;
+      box-shadow: 0 4px 20px rgba(6,182,212,0.4);
+      z-index: 70;
+    }
+
+    .mini-earnings {
+      position: absolute;
+      top: 54px;
+      right: 16px;
+      background: rgba(24,24,27,0.9);
+      backdrop-filter: blur(10px);
+      padding: 8px 14px;
+      border-radius: 12px;
+      border: 1px solid #27272A;
+      z-index: 70;
+    }
+
+    .mini-earnings .value {
+      font-size: 16px;
+      font-weight: 700;
+      color: #22C55E;
+    }
+
+    .mini-earnings .label {
+      font-size: 9px;
+      color: #71717A;
+    }
+
+    /* Direction 6: Ultra Minimal */
+    .ultra-rec {
+      position: absolute;
+      top: 54px;
+      left: 12px;
+      right: 12px;
+      background: #06B6D4;
+      color: #000;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 70;
+    }
+
+    .ultra-earnings {
+      position: absolute;
+      bottom: 96px;
+      left: 12px;
+      background: rgba(24,24,27,0.9);
+      backdrop-filter: blur(10px);
+      padding: 12px 18px;
+      border-radius: 14px;
+      border: 1px solid #27272A;
+      z-index: 70;
+    }
+
+    .ultra-earnings .value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #22C55E;
+    }
+
+    .ultra-earnings .label {
+      font-size: 10px;
+      color: #71717A;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      margin-top: 50px;
+      padding: 30px;
+      color: #666;
+    }
+
+    .footer h3 {
+      color: #888;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Giglet Design Directions</h1>
+    <p>6 layout approaches for the Focus Zones map - all using Clean Pro theme</p>
+  </div>
+
+  <div class="directions-grid">
+
+    <!-- Direction 1: Full Bleed Map -->
+    <div class="direction-card">
+      <div class="direction-header">
+        <h2>1. Full Bleed Map <span class="badge">RECOMMENDED</span></h2>
+        <div class="personality">Maximum Map, Floating UI</div>
+        <div class="description">Map takes entire screen. Earnings pill at top, recommendation banner at bottom. Zone scores float on map. Ultimate glanceability.</div>
+        <div class="traits">
+          <span class="trait">Immersive</span>
+          <span class="trait">Glanceable</span>
+          <span class="trait">Minimal Chrome</span>
+        </div>
+      </div>
+      <div class="phone-container">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="map-bg">
+              <div class="map-grid"></div>
+              <div class="map-roads">
+                <div class="road road-h1"></div>
+                <div class="road road-h2"></div>
+                <div class="road road-v1"></div>
+                <div class="road road-v2"></div>
+              </div>
+              <div class="zone zone-hot" style="width:140px;height:140px;top:15%;right:5%;"></div>
+              <div class="zone zone-warm" style="width:100px;height:100px;top:35%;left:10%;"></div>
+              <div class="zone zone-cool" style="width:90px;height:90px;top:50%;left:40%;"></div>
+            </div>
+
+            <div class="zone-score-float score-hot" style="top:22%;right:18%;">92</div>
+            <div class="zone-score-float score-warm" style="top:42%;left:18%;">67</div>
+            <div class="zone-score-float score-cool" style="top:58%;left:48%;">34</div>
+
+            <div class="user-location" style="top:45%;left:55%;">
+              <div class="user-pulse"></div>
+            </div>
+
+            <div class="status-bar status-bar-bg">
+              <span>9:41</span>
+              <span>100%</span>
+            </div>
+
+            <div class="earnings-pill">
+              <span class="amount">$127.50</span>
+              <span class="label">today</span>
+            </div>
+
+            <div class="recommendation-banner">
+              <span class="arrow">↗</span>
+              <span>Head to Midtown</span>
+              <span class="score">Score 92</span>
+            </div>
+
+            <div class="tab-bar">
+              <div class="tab-item active">
+                <div class="tab-icon">◉</div>
+                <span>Zones</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">$</div>
+                <span>Earnings</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">↝</div>
+                <span>Mileage</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">⚙</div>
+                <span>Settings</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Direction 2: Floating Card -->
+    <div class="direction-card">
+      <div class="direction-header">
+        <h2>2. Floating Card</h2>
+        <div class="personality">Unified Info Card</div>
+        <div class="description">Single floating card combines earnings, mileage, and recommendation. Everything in one glance without looking around the screen.</div>
+        <div class="traits">
+          <span class="trait">Consolidated</span>
+          <span class="trait">One Focus Point</span>
+          <span class="trait">Easy to Read</span>
+        </div>
+      </div>
+      <div class="phone-container">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="map-bg">
+              <div class="map-grid"></div>
+              <div class="map-roads">
+                <div class="road road-h1"></div>
+                <div class="road road-h2"></div>
+                <div class="road road-v1"></div>
+                <div class="road road-v2"></div>
+              </div>
+              <div class="zone zone-hot" style="width:140px;height:140px;top:10%;right:5%;"></div>
+              <div class="zone zone-warm" style="width:100px;height:100px;top:30%;left:10%;"></div>
+              <div class="zone zone-cool" style="width:90px;height:90px;top:40%;left:40%;"></div>
+            </div>
+
+            <div class="zone-score-float score-hot" style="top:17%;right:18%;">92</div>
+            <div class="zone-score-float score-warm" style="top:37%;left:18%;">67</div>
+
+            <div class="user-location" style="top:35%;left:55%;">
+              <div class="user-pulse"></div>
+            </div>
+
+            <div class="status-bar status-bar-bg">
+              <span>9:41</span>
+              <span>100%</span>
+            </div>
+
+            <div class="floating-card">
+              <div class="card-header">
+                <span class="earnings-lg">$127.50</span>
+                <span class="mileage">↝ <span>47.2 mi</span></span>
+              </div>
+              <div class="rec-bar">
+                <span>↗</span>
+                <span>Head to Midtown</span>
+                <span style="margin-left:auto;">92</span>
+              </div>
+            </div>
+
+            <div class="tab-bar">
+              <div class="tab-item active">
+                <div class="tab-icon">◉</div>
+                <span>Zones</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">$</div>
+                <span>Earnings</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">↝</div>
+                <span>Mileage</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">⚙</div>
+                <span>Settings</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Direction 3: Split View -->
+    <div class="direction-card">
+      <div class="direction-header">
+        <h2>3. Split View</h2>
+        <div class="personality">Map + Dashboard Hybrid</div>
+        <div class="description">Map on top half, info panel on bottom. Good for users who want more data visible at once. Less map real estate.</div>
+        <div class="traits">
+          <span class="trait">Data Dense</span>
+          <span class="trait">Dashboard Feel</span>
+          <span class="trait">Structured</span>
+        </div>
+      </div>
+      <div class="phone-container">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="map-bg split-map">
+              <div class="map-grid"></div>
+              <div class="map-roads">
+                <div class="road road-h1"></div>
+                <div class="road road-v1"></div>
+                <div class="road road-v2"></div>
+              </div>
+              <div class="zone zone-hot" style="width:100px;height:100px;top:10%;right:10%;"></div>
+              <div class="zone zone-warm" style="width:80px;height:80px;top:25%;left:15%;"></div>
+            </div>
+
+            <div class="zone-score-float score-hot" style="top:15%;right:22%;width:36px;height:36px;font-size:14px;">92</div>
+
+            <div class="user-location" style="top:30%;left:50%;">
+              <div class="user-pulse"></div>
+            </div>
+
+            <div class="status-bar status-bar-bg">
+              <span>9:41</span>
+              <span>100%</span>
+            </div>
+
+            <div class="split-panel">
+              <div class="section-title">Today's Earnings</div>
+              <div class="big-earnings">$127.50</div>
+              <div class="sub-label">47.2 miles tracked • $26.86 tax deduction</div>
+
+              <div class="mini-rec">
+                <div class="icon">↗</div>
+                <div class="text">
+                  <div class="title">Head to Midtown</div>
+                  <div class="subtitle">Score 92 • 1.2 mi away</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Direction 4: FAB + Drawer -->
+    <div class="direction-card">
+      <div class="direction-header">
+        <h2>4. FAB + Minimal</h2>
+        <div class="personality">Pure Map, Action Button</div>
+        <div class="description">Absolute maximum map space. Small earnings badge, FAB reveals more info on tap. For users who just want the map.</div>
+        <div class="traits">
+          <span class="trait">Ultra Minimal</span>
+          <span class="trait">Map First</span>
+          <span class="trait">Tap to Reveal</span>
+        </div>
+      </div>
+      <div class="phone-container">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="map-bg">
+              <div class="map-grid"></div>
+              <div class="map-roads">
+                <div class="road road-h1"></div>
+                <div class="road road-h2"></div>
+                <div class="road road-h3"></div>
+                <div class="road road-v1"></div>
+                <div class="road road-v2"></div>
+                <div class="road road-v3"></div>
+              </div>
+              <div class="zone zone-hot" style="width:150px;height:150px;top:15%;right:0;"></div>
+              <div class="zone zone-warm" style="width:120px;height:120px;top:40%;left:5%;"></div>
+              <div class="zone zone-cool" style="width:100px;height:100px;bottom:25%;left:30%;"></div>
+            </div>
+
+            <div class="zone-score-float score-hot" style="top:25%;right:15%;">92</div>
+            <div class="zone-score-float score-warm" style="top:50%;left:18%;">67</div>
+            <div class="zone-score-float score-cool" style="bottom:32%;left:42%;">34</div>
+
+            <div class="user-location" style="top:55%;left:60%;">
+              <div class="user-pulse"></div>
+            </div>
+
+            <div class="status-bar status-bar-bg">
+              <span>9:41</span>
+              <span>100%</span>
+            </div>
+
+            <div class="mini-earnings">
+              <div class="value">$127.50</div>
+              <div class="label">today</div>
+            </div>
+
+            <div class="fab">↗</div>
+
+            <div class="tab-bar">
+              <div class="tab-item active">
+                <div class="tab-icon">◉</div>
+                <span>Zones</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">$</div>
+                <span>Earnings</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">↝</div>
+                <span>Mileage</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">⚙</div>
+                <span>Settings</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Direction 5: Bottom Sheet -->
+    <div class="direction-card">
+      <div class="direction-header">
+        <h2>5. Bottom Sheet</h2>
+        <div class="personality">Swipe-Up Details</div>
+        <div class="description">Full map with collapsed bottom sheet. Swipe up for more info. Common pattern from Apple/Google Maps.</div>
+        <div class="traits">
+          <span class="trait">Familiar Pattern</span>
+          <span class="trait">Expandable</span>
+          <span class="trait">Apple Maps Style</span>
+        </div>
+      </div>
+      <div class="phone-container">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="map-bg">
+              <div class="map-grid"></div>
+              <div class="map-roads">
+                <div class="road road-h1"></div>
+                <div class="road road-h2"></div>
+                <div class="road road-v1"></div>
+                <div class="road road-v2"></div>
+              </div>
+              <div class="zone zone-hot" style="width:140px;height:140px;top:10%;right:5%;"></div>
+              <div class="zone zone-warm" style="width:100px;height:100px;top:30%;left:10%;"></div>
+            </div>
+
+            <div class="zone-score-float score-hot" style="top:17%;right:18%;">92</div>
+            <div class="zone-score-float score-warm" style="top:37%;left:18%;">67</div>
+
+            <div class="user-location" style="top:40%;left:55%;">
+              <div class="user-pulse"></div>
+            </div>
+
+            <div class="status-bar status-bar-bg">
+              <span>9:41</span>
+              <span>100%</span>
+            </div>
+
+            <div class="recommendation-banner" style="bottom:180px;">
+              <span class="arrow">↗</span>
+              <span>Head to Midtown</span>
+              <span class="score">Score 92</span>
+            </div>
+
+            <div class="bottom-sheet">
+              <div class="sheet-handle"></div>
+              <div class="sheet-content">
+                <h3>Today's Summary</h3>
+                <div class="sheet-stats">
+                  <div class="stat-item">
+                    <div class="stat-value">$127.50</div>
+                    <div class="stat-label">Earnings</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-value">47.2</div>
+                    <div class="stat-label">Miles</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-value">12</div>
+                    <div class="stat-label">Deliveries</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Direction 6: Ultra Minimal -->
+    <div class="direction-card">
+      <div class="direction-header">
+        <h2>6. Ultra Minimal</h2>
+        <div class="personality">Just What Matters</div>
+        <div class="description">Only recommendation banner and earnings. No zone scores on map - just the heatmap colors. Maximum simplicity.</div>
+        <div class="traits">
+          <span class="trait">Extreme Simplicity</span>
+          <span class="trait">Color-Only Zones</span>
+          <span class="trait">Zen</span>
+        </div>
+      </div>
+      <div class="phone-container">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="map-bg">
+              <div class="map-grid"></div>
+              <div class="map-roads">
+                <div class="road road-h1"></div>
+                <div class="road road-h2"></div>
+                <div class="road road-h3"></div>
+                <div class="road road-v1"></div>
+                <div class="road road-v2"></div>
+                <div class="road road-v3"></div>
+              </div>
+              <div class="zone zone-hot" style="width:160px;height:160px;top:20%;right:-10%;"></div>
+              <div class="zone zone-warm" style="width:130px;height:130px;top:40%;left:0%;"></div>
+              <div class="zone zone-cool" style="width:110px;height:110px;bottom:20%;left:35%;"></div>
+            </div>
+
+            <div class="user-location" style="top:50%;left:55%;">
+              <div class="user-pulse"></div>
+            </div>
+
+            <div class="status-bar status-bar-bg">
+              <span>9:41</span>
+              <span>100%</span>
+            </div>
+
+            <div class="ultra-rec">
+              <span>↗</span>
+              <span>Head to Midtown</span>
+              <span style="margin-left:auto;background:rgba(0,0,0,0.2);padding:2px 8px;border-radius:6px;">92</span>
+            </div>
+
+            <div class="ultra-earnings">
+              <div class="value">$127.50</div>
+              <div class="label">today</div>
+            </div>
+
+            <div class="tab-bar">
+              <div class="tab-item active">
+                <div class="tab-icon">◉</div>
+                <span>Zones</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">$</div>
+                <span>Earnings</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">↝</div>
+                <span>Mileage</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">⚙</div>
+                <span>Settings</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <h3>How to Choose</h3>
+    <p>Pick the layout that best matches "glanceable at a red light."</p>
+    <p style="margin-top:10px;">All directions use the Clean Pro color theme.</p>
+  </div>
+
+</body>
+</html>

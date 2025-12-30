@@ -1,0 +1,35 @@
+{
+  "name": "giglet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Giglet - Smart earnings tracker for food delivery drivers",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:mobile": "npm run start --workspace=apps/mobile",
+    "build:api": "npm run build --workspace=apps/api",
+    "lint": "eslint apps --ext .ts,.tsx",
+    "lint:fix": "eslint apps --ext .ts,.tsx --fix",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json}\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,json}\"",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "author": "George",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@typescript-eslint/eslint-plugin": "^8.51.0",
+    "@typescript-eslint/parser": "^8.51.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "prettier": "^3.7.4"
+  }
+}

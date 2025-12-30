@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Giglet - Color Theme Explorer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      color: #888;
+      font-size: 1.1rem;
+    }
+
+    .themes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 30px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .theme-card {
+      border-radius: 16px;
+      overflow: hidden;
+      background: #111;
+      border: 1px solid #222;
+    }
+
+    .theme-header {
+      padding: 20px;
+      border-bottom: 1px solid #222;
+    }
+
+    .theme-header h2 {
+      font-size: 1.4rem;
+      margin-bottom: 4px;
+    }
+
+    .theme-header .personality {
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    .theme-header .best-for {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #666;
+    }
+
+    /* Color Swatches */
+    .swatches {
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .swatch {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 6px;
+      font-size: 0.65rem;
+      font-weight: 500;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+
+    .swatch-label {
+      font-size: 0.6rem;
+      opacity: 0.8;
+      margin-bottom: 2px;
+    }
+
+    /* Semantic Colors */
+    .semantic-row {
+      padding: 0 20px 20px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .semantic-swatch {
+      flex: 1;
+      height: 40px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    /* Component Preview */
+    .preview-section {
+      padding: 20px;
+      border-top: 1px solid #222;
+    }
+
+    .preview-section h3 {
+      font-size: 0.8rem;
+      color: #666;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+
+    .btn:hover {
+      transform: scale(1.02);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 2px solid;
+    }
+
+    .btn-disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Cards */
+    .card-preview {
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .card-preview .earnings {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .card-preview .label {
+      font-size: 0.85rem;
+      opacity: 0.7;
+    }
+
+    /* Zone Score */
+    .zone-score {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .zone-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .zone-label {
+      font-size: 0.8rem;
+      color: #888;
+    }
+
+    /* Input Preview */
+    .input-preview {
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 0.95rem;
+      border: 2px solid;
+      background: transparent;
+      color: #fff;
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    /* Map Preview */
+    .map-preview {
+      height: 120px;
+      border-radius: 12px;
+      margin-top: 12px;
+      position: relative;
+      overflow: hidden;
+      background: #1a1a2e;
+    }
+
+    .map-zone {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.6;
+    }
+
+    .recommendation-banner {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .recommendation-banner .arrow {
+      font-size: 1.2rem;
+    }
+
+    /* Theme 1: Neon Night */
+    .theme-neon .swatch-primary { background: #00FF94; color: #000; }
+    .theme-neon .swatch-secondary { background: #7B61FF; }
+    .theme-neon .swatch-accent { background: #FF3D71; }
+    .theme-neon .swatch-bg { background: #0D0D0D; border: 1px solid #222; }
+    .theme-neon .swatch-surface { background: #1A1A1A; }
+    .theme-neon .semantic-success { background: #00FF94; color: #000; }
+    .theme-neon .semantic-warning { background: #FFAA00; color: #000; }
+    .theme-neon .semantic-error { background: #FF3D71; }
+    .theme-neon .semantic-info { background: #7B61FF; }
+    .theme-neon .btn-primary { background: #00FF94; color: #000; }
+    .theme-neon .btn-secondary { border-color: #00FF94; color: #00FF94; }
+    .theme-neon .card-preview { background: #1A1A1A; }
+    .theme-neon .card-preview .earnings { color: #00FF94; }
+    .theme-neon .zone-hot { background: linear-gradient(135deg, #FF3D71, #FF7A00); }
+    .theme-neon .zone-warm { background: linear-gradient(135deg, #FF7A00, #FFAA00); color: #000; }
+    .theme-neon .zone-cool { background: linear-gradient(135deg, #7B61FF, #00C9FF); }
+    .theme-neon .input-preview { border-color: #333; }
+    .theme-neon .input-preview:focus { border-color: #00FF94; outline: none; }
+    .theme-neon .map-zone-hot { background: radial-gradient(circle, rgba(255,61,113,0.8), transparent); }
+    .theme-neon .map-zone-warm { background: radial-gradient(circle, rgba(255,170,0,0.6), transparent); }
+    .theme-neon .map-zone-cool { background: radial-gradient(circle, rgba(123,97,255,0.5), transparent); }
+    .theme-neon .recommendation-banner { background: #00FF94; color: #000; }
+
+    /* Theme 2: Money Green */
+    .theme-money .swatch-primary { background: #34D399; color: #000; }
+    .theme-money .swatch-secondary { background: #10B981; color: #000; }
+    .theme-money .swatch-accent { background: #F59E0B; color: #000; }
+    .theme-money .swatch-bg { background: #0F1410; border: 1px solid #1F2A1F; }
+    .theme-money .swatch-surface { background: #1A2420; }
+    .theme-money .semantic-success { background: #34D399; color: #000; }
+    .theme-money .semantic-warning { background: #F59E0B; color: #000; }
+    .theme-money .semantic-error { background: #EF4444; }
+    .theme-money .semantic-info { background: #3B82F6; }
+    .theme-money .btn-primary { background: #34D399; color: #000; }
+    .theme-money .btn-secondary { border-color: #34D399; color: #34D399; }
+    .theme-money .card-preview { background: #1A2420; }
+    .theme-money .card-preview .earnings { color: #34D399; }
+    .theme-money .zone-hot { background: linear-gradient(135deg, #EF4444, #F59E0B); }
+    .theme-money .zone-warm { background: linear-gradient(135deg, #F59E0B, #FBBF24); color: #000; }
+    .theme-money .zone-cool { background: linear-gradient(135deg, #3B82F6, #06B6D4); }
+    .theme-money .input-preview { border-color: #2A3A2A; }
+    .theme-money .input-preview:focus { border-color: #34D399; outline: none; }
+    .theme-money .map-zone-hot { background: radial-gradient(circle, rgba(239,68,68,0.7), transparent); }
+    .theme-money .map-zone-warm { background: radial-gradient(circle, rgba(245,158,11,0.6), transparent); }
+    .theme-money .map-zone-cool { background: radial-gradient(circle, rgba(59,130,246,0.5), transparent); }
+    .theme-money .recommendation-banner { background: #34D399; color: #000; }
+
+    /* Theme 3: Clean Pro */
+    .theme-clean .swatch-primary { background: #06B6D4; }
+    .theme-clean .swatch-secondary { background: #0EA5E9; }
+    .theme-clean .swatch-accent { background: #8B5CF6; }
+    .theme-clean .swatch-bg { background: #09090B; border: 1px solid #27272A; }
+    .theme-clean .swatch-surface { background: #18181B; }
+    .theme-clean .semantic-success { background: #22C55E; color: #000; }
+    .theme-clean .semantic-warning { background: #EAB308; color: #000; }
+    .theme-clean .semantic-error { background: #EF4444; }
+    .theme-clean .semantic-info { background: #06B6D4; }
+    .theme-clean .btn-primary { background: #06B6D4; color: #000; }
+    .theme-clean .btn-secondary { border-color: #06B6D4; color: #06B6D4; }
+    .theme-clean .card-preview { background: #18181B; }
+    .theme-clean .card-preview .earnings { color: #22C55E; }
+    .theme-clean .zone-hot { background: linear-gradient(135deg, #EF4444, #F97316); }
+    .theme-clean .zone-warm { background: linear-gradient(135deg, #F97316, #EAB308); color: #000; }
+    .theme-clean .zone-cool { background: linear-gradient(135deg, #0EA5E9, #06B6D4); }
+    .theme-clean .input-preview { border-color: #27272A; }
+    .theme-clean .input-preview:focus { border-color: #06B6D4; outline: none; }
+    .theme-clean .map-zone-hot { background: radial-gradient(circle, rgba(239,68,68,0.7), transparent); }
+    .theme-clean .map-zone-warm { background: radial-gradient(circle, rgba(234,179,8,0.6), transparent); }
+    .theme-clean .map-zone-cool { background: radial-gradient(circle, rgba(6,182,212,0.5), transparent); }
+    .theme-clean .recommendation-banner { background: #06B6D4; color: #000; }
+
+    /* Theme 4: Warm Energy */
+    .theme-warm .swatch-primary { background: #F97316; color: #000; }
+    .theme-warm .swatch-secondary { background: #FB923C; color: #000; }
+    .theme-warm .swatch-accent { background: #FBBF24; color: #000; }
+    .theme-warm .swatch-bg { background: #0C0A09; border: 1px solid #292524; }
+    .theme-warm .swatch-surface { background: #1C1917; }
+    .theme-warm .semantic-success { background: #22C55E; color: #000; }
+    .theme-warm .semantic-warning { background: #FBBF24; color: #000; }
+    .theme-warm .semantic-error { background: #DC2626; }
+    .theme-warm .semantic-info { background: #0EA5E9; }
+    .theme-warm .btn-primary { background: #F97316; color: #000; }
+    .theme-warm .btn-secondary { border-color: #F97316; color: #F97316; }
+    .theme-warm .card-preview { background: #1C1917; }
+    .theme-warm .card-preview .earnings { color: #22C55E; }
+    .theme-warm .zone-hot { background: linear-gradient(135deg, #DC2626, #F97316); }
+    .theme-warm .zone-warm { background: linear-gradient(135deg, #F97316, #FBBF24); color: #000; }
+    .theme-warm .zone-cool { background: linear-gradient(135deg, #0EA5E9, #06B6D4); }
+    .theme-warm .input-preview { border-color: #292524; }
+    .theme-warm .input-preview:focus { border-color: #F97316; outline: none; }
+    .theme-warm .map-zone-hot { background: radial-gradient(circle, rgba(220,38,38,0.8), transparent); }
+    .theme-warm .map-zone-warm { background: radial-gradient(circle, rgba(249,115,22,0.6), transparent); }
+    .theme-warm .map-zone-cool { background: radial-gradient(circle, rgba(14,165,233,0.5), transparent); }
+    .theme-warm .recommendation-banner { background: #F97316; color: #000; }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      margin-top: 50px;
+      padding: 30px;
+      color: #666;
+    }
+
+    .footer h3 {
+      color: #888;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Giglet Color Themes</h1>
+    <p>Explore 4 theme directions optimized for dark mode and night driving</p>
+  </div>
+
+  <div class="themes-grid">
+
+    <!-- Theme 1: Neon Night -->
+    <div class="theme-card theme-neon">
+      <div class="theme-header">
+        <h2>1. Neon Night</h2>
+        <div class="personality">Electric, Bold, Modern</div>
+        <div class="best-for">Best for: Standing out, tech-forward brand, younger drivers</div>
+      </div>
+
+      <div class="swatches">
+        <div class="swatch swatch-primary"><span class="swatch-label">Primary</span>#00FF94</div>
+        <div class="swatch swatch-secondary"><span class="swatch-label">Secondary</span>#7B61FF</div>
+        <div class="swatch swatch-accent"><span class="swatch-label">Accent</span>#FF3D71</div>
+        <div class="swatch swatch-bg"><span class="swatch-label">BG</span>#0D0D0D</div>
+        <div class="swatch swatch-surface"><span class="swatch-label">Surface</span>#1A1A1A</div>
+      </div>
+
+      <div class="semantic-row">
+        <div class="semantic-swatch semantic-success">Success</div>
+        <div class="semantic-swatch semantic-warning">Warning</div>
+        <div class="semantic-swatch semantic-error">Error</div>
+        <div class="semantic-swatch semantic-info">Info</div>
+      </div>
+
+      <div class="preview-section">
+        <h3>Components</h3>
+        <div class="button-row">
+          <button class="btn btn-primary">Start Dash</button>
+          <button class="btn btn-secondary">View Zones</button>
+        </div>
+
+        <div class="card-preview">
+          <div class="earnings">$127.50</div>
+          <div class="label">Today's Earnings</div>
+        </div>
+
+        <div class="zone-row">
+          <div class="zone-score zone-hot">92</div>
+          <div class="zone-score zone-warm">65</div>
+          <div class="zone-score zone-cool">34</div>
+          <span class="zone-label">Zone Scores</span>
+        </div>
+
+        <input class="input-preview" placeholder="Search location..." />
+
+        <div class="map-preview">
+          <div class="map-zone map-zone-hot" style="width:100px;height:100px;top:10px;left:60%;"></div>
+          <div class="map-zone map-zone-warm" style="width:80px;height:80px;top:30px;left:20%;"></div>
+          <div class="map-zone map-zone-cool" style="width:70px;height:70px;top:50px;left:40%;"></div>
+          <div class="recommendation-banner">
+            <span class="arrow">&#8599;</span> Head to Midtown - Score 92
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme 2: Money Green -->
+    <div class="theme-card theme-money">
+      <div class="theme-header">
+        <h2>2. Money Green</h2>
+        <div class="personality">Growth, Earnings-Focused, Trustworthy</div>
+        <div class="best-for">Best for: Emphasizing earnings, financial clarity, serious drivers</div>
+      </div>
+
+      <div class="swatches">
+        <div class="swatch swatch-primary"><span class="swatch-label">Primary</span>#34D399</div>
+        <div class="swatch swatch-secondary"><span class="swatch-label">Secondary</span>#10B981</div>
+        <div class="swatch swatch-accent"><span class="swatch-label">Accent</span>#F59E0B</div>
+        <div class="swatch swatch-bg"><span class="swatch-label">BG</span>#0F1410</div>
+        <div class="swatch swatch-surface"><span class="swatch-label">Surface</span>#1A2420</div>
+      </div>
+
+      <div class="semantic-row">
+        <div class="semantic-swatch semantic-success">Success</div>
+        <div class="semantic-swatch semantic-warning">Warning</div>
+        <div class="semantic-swatch semantic-error">Error</div>
+        <div class="semantic-swatch semantic-info">Info</div>
+      </div>
+
+      <div class="preview-section">
+        <h3>Components</h3>
+        <div class="button-row">
+          <button class="btn btn-primary">Start Dash</button>
+          <button class="btn btn-secondary">View Zones</button>
+        </div>
+
+        <div class="card-preview">
+          <div class="earnings">$127.50</div>
+          <div class="label">Today's Earnings</div>
+        </div>
+
+        <div class="zone-row">
+          <div class="zone-score zone-hot">92</div>
+          <div class="zone-score zone-warm">65</div>
+          <div class="zone-score zone-cool">34</div>
+          <span class="zone-label">Zone Scores</span>
+        </div>
+
+        <input class="input-preview" placeholder="Search location..." />
+
+        <div class="map-preview">
+          <div class="map-zone map-zone-hot" style="width:100px;height:100px;top:10px;left:60%;"></div>
+          <div class="map-zone map-zone-warm" style="width:80px;height:80px;top:30px;left:20%;"></div>
+          <div class="map-zone map-zone-cool" style="width:70px;height:70px;top:50px;left:40%;"></div>
+          <div class="recommendation-banner">
+            <span class="arrow">&#8599;</span> Head to Midtown - Score 92
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme 3: Clean Pro -->
+    <div class="theme-card theme-clean">
+      <div class="theme-header">
+        <h2>3. Clean Pro</h2>
+        <div class="personality">Professional, Trustworthy, Minimal</div>
+        <div class="best-for">Best for: Broad appeal, professional feel, all driver types</div>
+      </div>
+
+      <div class="swatches">
+        <div class="swatch swatch-primary"><span class="swatch-label">Primary</span>#06B6D4</div>
+        <div class="swatch swatch-secondary"><span class="swatch-label">Secondary</span>#0EA5E9</div>
+        <div class="swatch swatch-accent"><span class="swatch-label">Accent</span>#8B5CF6</div>
+        <div class="swatch swatch-bg"><span class="swatch-label">BG</span>#09090B</div>
+        <div class="swatch swatch-surface"><span class="swatch-label">Surface</span>#18181B</div>
+      </div>
+
+      <div class="semantic-row">
+        <div class="semantic-swatch semantic-success">Success</div>
+        <div class="semantic-swatch semantic-warning">Warning</div>
+        <div class="semantic-swatch semantic-error">Error</div>
+        <div class="semantic-swatch semantic-info">Info</div>
+      </div>
+
+      <div class="preview-section">
+        <h3>Components</h3>
+        <div class="button-row">
+          <button class="btn btn-primary">Start Dash</button>
+          <button class="btn btn-secondary">View Zones</button>
+        </div>
+
+        <div class="card-preview">
+          <div class="earnings">$127.50</div>
+          <div class="label">Today's Earnings</div>
+        </div>
+
+        <div class="zone-row">
+          <div class="zone-score zone-hot">92</div>
+          <div class="zone-score zone-warm">65</div>
+          <div class="zone-score zone-cool">34</div>
+          <span class="zone-label">Zone Scores</span>
+        </div>
+
+        <input class="input-preview" placeholder="Search location..." />
+
+        <div class="map-preview">
+          <div class="map-zone map-zone-hot" style="width:100px;height:100px;top:10px;left:60%;"></div>
+          <div class="map-zone map-zone-warm" style="width:80px;height:80px;top:30px;left:20%;"></div>
+          <div class="map-zone map-zone-cool" style="width:70px;height:70px;top:50px;left:40%;"></div>
+          <div class="recommendation-banner">
+            <span class="arrow">&#8599;</span> Head to Midtown - Score 92
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme 4: Warm Energy -->
+    <div class="theme-card theme-warm">
+      <div class="theme-header">
+        <h2>4. Warm Energy</h2>
+        <div class="personality">Energetic, Action-Oriented, Urgent</div>
+        <div class="best-for">Best for: Driving action, creating urgency, active dashers</div>
+      </div>
+
+      <div class="swatches">
+        <div class="swatch swatch-primary"><span class="swatch-label">Primary</span>#F97316</div>
+        <div class="swatch swatch-secondary"><span class="swatch-label">Secondary</span>#FB923C</div>
+        <div class="swatch swatch-accent"><span class="swatch-label">Accent</span>#FBBF24</div>
+        <div class="swatch swatch-bg"><span class="swatch-label">BG</span>#0C0A09</div>
+        <div class="swatch swatch-surface"><span class="swatch-label">Surface</span>#1C1917</div>
+      </div>
+
+      <div class="semantic-row">
+        <div class="semantic-swatch semantic-success">Success</div>
+        <div class="semantic-swatch semantic-warning">Warning</div>
+        <div class="semantic-swatch semantic-error">Error</div>
+        <div class="semantic-swatch semantic-info">Info</div>
+      </div>
+
+      <div class="preview-section">
+        <h3>Components</h3>
+        <div class="button-row">
+          <button class="btn btn-primary">Start Dash</button>
+          <button class="btn btn-secondary">View Zones</button>
+        </div>
+
+        <div class="card-preview">
+          <div class="earnings">$127.50</div>
+          <div class="label">Today's Earnings</div>
+        </div>
+
+        <div class="zone-row">
+          <div class="zone-score zone-hot">92</div>
+          <div class="zone-score zone-warm">65</div>
+          <div class="zone-score zone-cool">34</div>
+          <span class="zone-label">Zone Scores</span>
+        </div>
+
+        <input class="input-preview" placeholder="Search location..." />
+
+        <div class="map-preview">
+          <div class="map-zone map-zone-hot" style="width:100px;height:100px;top:10px;left:60%;"></div>
+          <div class="map-zone map-zone-warm" style="width:80px;height:80px;top:30px;left:20%;"></div>
+          <div class="map-zone map-zone-cool" style="width:70px;height:70px;top:50px;left:40%;"></div>
+          <div class="recommendation-banner">
+            <span class="arrow">&#8599;</span> Head to Midtown - Score 92
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <h3>How to Choose</h3>
+    <p>Pick the theme that FEELS right for Giglet's brand personality.</p>
+    <p style="margin-top:10px;">All themes use dark mode with high-contrast heatmap colors for night driving visibility.</p>
+  </div>
+
+</body>
+</html>

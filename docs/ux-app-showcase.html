@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Giglet - Full App Showcase</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #06B6D4;
+      --secondary: #0EA5E9;
+      --accent: #8B5CF6;
+      --background: #09090B;
+      --surface: #18181B;
+      --surface-elevated: #1F1F23;
+      --border: #27272A;
+      --text-primary: #FFFFFF;
+      --text-secondary: #A1A1AA;
+      --text-muted: #71717A;
+      --success: #22C55E;
+      --warning: #EAB308;
+      --error: #EF4444;
+      --zone-hot: #EF4444;
+      --zone-warm: #F97316;
+      --zone-cool: #06B6D4;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+      background: #000;
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    .header h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      color: var(--text-secondary);
+      font-size: 1.2rem;
+    }
+
+    .section {
+      max-width: 1400px;
+      margin: 0 auto 80px;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 30px;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    .phones-row {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+
+    .phone-wrapper {
+      text-align: center;
+    }
+
+    .phone-label {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+
+    /* Phone Frame */
+    .phone {
+      width: 300px;
+      height: 620px;
+      background: var(--background);
+      border-radius: 44px;
+      border: 4px solid #333;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+    }
+
+    .phone-notch {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 130px;
+      height: 32px;
+      background: #000;
+      border-radius: 0 0 24px 24px;
+      z-index: 100;
+    }
+
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      background: var(--background);
+    }
+
+    /* Status Bar */
+    .status-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 50px;
+      padding: 14px 24px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      font-size: 14px;
+      font-weight: 600;
+      z-index: 90;
+    }
+
+    .status-bar-dark {
+      background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+    }
+
+    /* Tab Bar */
+    .tab-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 84px;
+      background: rgba(24,24,27,0.98);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-start;
+      padding-top: 10px;
+      z-index: 80;
+    }
+
+    .tab-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--text-muted);
+      width: 60px;
+    }
+
+    .tab-item.active {
+      color: var(--primary);
+    }
+
+    .tab-icon {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    /* Map Background */
+    .map-bg {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, #1a1a2e 0%, #16213e 40%, #1a1a2e 100%);
+    }
+
+    .map-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+
+    .road {
+      position: absolute;
+      background: rgba(255,255,255,0.1);
+    }
+
+    /* Zone Overlays */
+    .zone {
+      position: absolute;
+      border-radius: 50%;
+    }
+
+    .zone-hot {
+      background: radial-gradient(circle, rgba(239,68,68,0.7) 0%, rgba(249,115,22,0.3) 50%, transparent 70%);
+    }
+
+    .zone-warm {
+      background: radial-gradient(circle, rgba(249,115,22,0.6) 0%, rgba(234,179,8,0.25) 50%, transparent 70%);
+    }
+
+    .zone-cool {
+      background: radial-gradient(circle, rgba(14,165,233,0.5) 0%, rgba(6,182,212,0.2) 50%, transparent 70%);
+    }
+
+    /* Zone Score Badge */
+    .zone-score {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      z-index: 60;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+
+    .score-hot { background: linear-gradient(135deg, #EF4444, #F97316); }
+    .score-warm { background: linear-gradient(135deg, #F97316, #EAB308); color: #000; }
+    .score-cool { background: linear-gradient(135deg, #0EA5E9, #06B6D4); }
+
+    /* User Location */
+    .user-location {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      background: var(--primary);
+      border-radius: 50%;
+      border: 3px solid #fff;
+      box-shadow: 0 0 20px rgba(6,182,212,0.6);
+      z-index: 50;
+    }
+
+    .user-pulse {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background: rgba(6,182,212,0.15);
+      border-radius: 50%;
+      transform: translate(-16px, -16px);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: translate(-16px, -16px) scale(1); opacity: 0.6; }
+      100% { transform: translate(-16px, -16px) scale(1.8); opacity: 0; }
+    }
+
+    /* Recommendation Banner */
+    .recommendation {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      background: var(--primary);
+      color: #000;
+      padding: 14px 18px;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 70;
+      box-shadow: 0 6px 24px rgba(6,182,212,0.4);
+    }
+
+    .recommendation .arrow {
+      font-size: 22px;
+    }
+
+    .recommendation .score {
+      margin-left: auto;
+      background: rgba(0,0,0,0.15);
+      padding: 4px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    /* Bottom Sheet */
+    .bottom-sheet {
+      position: absolute;
+      bottom: 84px;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-radius: 24px 24px 0 0;
+      z-index: 75;
+      box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+    }
+
+    .sheet-handle {
+      width: 40px;
+      height: 5px;
+      background: #3F3F46;
+      border-radius: 3px;
+      margin: 10px auto 0;
+    }
+
+    .sheet-content {
+      padding: 16px 20px 20px;
+    }
+
+    .sheet-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .sheet-stats {
+      display: flex;
+      gap: 20px;
+    }
+
+    .stat {
+      flex: 1;
+    }
+
+    .stat-value {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--success);
+    }
+
+    .stat-value.cyan {
+      color: var(--primary);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Earnings Screen */
+    .earnings-screen {
+      padding: 60px 20px 100px;
+    }
+
+    .earnings-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .earnings-amount {
+      font-size: 52px;
+      font-weight: 700;
+      color: var(--success);
+    }
+
+    .earnings-period {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .period-selector {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .period-btn {
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .period-btn.active {
+      background: var(--primary);
+      color: #000;
+      border-color: var(--primary);
+    }
+
+    .platform-breakdown {
+      margin-top: 30px;
+    }
+
+    .platform-bar {
+      margin-bottom: 16px;
+    }
+
+    .platform-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .platform-name {
+      color: var(--text-secondary);
+    }
+
+    .platform-amount {
+      font-weight: 600;
+    }
+
+    .bar-track {
+      height: 8px;
+      background: var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+    }
+
+    .bar-doordash {
+      background: linear-gradient(90deg, #FF3008, #FF6347);
+      width: 65%;
+    }
+
+    .bar-ubereats {
+      background: linear-gradient(90deg, #06C167, #34D399);
+      width: 35%;
+    }
+
+    .deliveries-list {
+      margin-top: 30px;
+    }
+
+    .list-header {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .delivery-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .delivery-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .delivery-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--surface-elevated);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .delivery-name {
+      font-weight: 500;
+    }
+
+    .delivery-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .delivery-amount {
+      font-weight: 600;
+      color: var(--success);
+    }
+
+    /* Mileage Screen */
+    .mileage-screen {
+      padding: 60px 20px 100px;
+    }
+
+    .tracking-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .tracking-dot {
+      width: 10px;
+      height: 10px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: blink 1.5s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .tracking-text {
+      font-size: 14px;
+      color: var(--success);
+      font-weight: 500;
+    }
+
+    .mileage-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .mileage-amount {
+      font-size: 52px;
+      font-weight: 700;
+    }
+
+    .mileage-unit {
+      font-size: 24px;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .tax-saved {
+      font-size: 18px;
+      color: var(--success);
+      margin-top: 4px;
+    }
+
+    .mileage-summary {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 30px;
+    }
+
+    .mileage-card {
+      flex: 1;
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .mileage-card-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .mileage-card-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .trip-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      background: var(--surface);
+      border-radius: 12px;
+      margin-bottom: 10px;
+    }
+
+    .trip-time {
+      font-weight: 500;
+    }
+
+    .trip-route {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .trip-miles {
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    /* Settings Screen */
+    .settings-screen {
+      padding: 60px 20px 100px;
+    }
+
+    .settings-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .settings-title {
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .settings-section {
+      margin-bottom: 24px;
+    }
+
+    .settings-section-title {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+      padding-left: 4px;
+    }
+
+    .settings-group {
+      background: var(--surface);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .settings-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .settings-item:last-child {
+      border-bottom: none;
+    }
+
+    .settings-item-label {
+      font-size: 16px;
+    }
+
+    .settings-item-value {
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+
+    .settings-arrow {
+      color: var(--text-muted);
+      font-size: 18px;
+    }
+
+    .toggle {
+      width: 50px;
+      height: 30px;
+      background: var(--success);
+      border-radius: 15px;
+      position: relative;
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      background: #fff;
+      border-radius: 50%;
+      top: 2px;
+      right: 2px;
+    }
+
+    .toggle.off {
+      background: var(--border);
+    }
+
+    .toggle.off::after {
+      right: auto;
+      left: 2px;
+    }
+
+    .platform-connected {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .platform-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .logo-doordash {
+      background: #FF3008;
+    }
+
+    .logo-ubereats {
+      background: #06C167;
+    }
+
+    .connected-badge {
+      font-size: 12px;
+      color: var(--success);
+    }
+
+    /* Onboarding Screen */
+    .onboarding-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 40px 30px;
+      text-align: center;
+    }
+
+    .onboarding-logo {
+      font-size: 64px;
+      margin-bottom: 30px;
+    }
+
+    .onboarding-title {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+
+    .onboarding-title span {
+      color: var(--primary);
+    }
+
+    .onboarding-subtitle {
+      font-size: 17px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 50px;
+    }
+
+    .onboarding-btn {
+      width: 100%;
+      padding: 18px;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 14px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #000;
+    }
+
+    .btn-apple {
+      background: #fff;
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .btn-google {
+      background: var(--surface);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .onboarding-footer {
+      margin-top: 30px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .onboarding-footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    /* Pro Paywall */
+    .paywall-screen {
+      padding: 50px 24px 40px;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .paywall-close {
+      position: absolute;
+      top: 60px;
+      right: 20px;
+      font-size: 28px;
+      color: var(--text-muted);
+    }
+
+    .paywall-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .paywall-icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+    }
+
+    .paywall-title {
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .paywall-features {
+      margin-bottom: 30px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 0;
+    }
+
+    .feature-check {
+      width: 28px;
+      height: 28px;
+      background: rgba(34,197,94,0.15);
+      color: var(--success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .feature-text {
+      font-size: 16px;
+    }
+
+    .pricing-cards {
+      margin-bottom: 24px;
+    }
+
+    .price-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .price-card.selected {
+      border-color: var(--primary);
+      background: rgba(6,182,212,0.08);
+    }
+
+    .price-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .radio {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+    }
+
+    .price-card.selected .radio {
+      border-color: var(--primary);
+      background: var(--primary);
+    }
+
+    .price-card.selected .radio::after {
+      content: '✓';
+      color: #000;
+      font-size: 14px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .price-label {
+      font-weight: 600;
+      font-size: 17px;
+    }
+
+    .price-sublabel {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .price-amount {
+      text-align: right;
+    }
+
+    .price-value {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .price-period {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .save-badge {
+      background: var(--success);
+      color: #000;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-left: 10px;
+    }
+
+    .paywall-cta {
+      width: 100%;
+      padding: 18px;
+      background: var(--primary);
+      color: #000;
+      border: none;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .paywall-restore {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .paywall-restore a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 50px 20px;
+      color: var(--text-muted);
+    }
+
+    .footer p {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Giglet</h1>
+    <p>Full App Showcase — All Main Screens</p>
+  </div>
+
+  <!-- Section 1: Core Screens -->
+  <div class="section">
+    <div class="section-title">Core Screens</div>
+    <div class="phones-row">
+
+      <!-- Focus Zones -->
+      <div class="phone-wrapper">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="map-bg">
+              <div class="map-grid"></div>
+              <div class="road" style="height:3px;width:100%;top:28%;"></div>
+              <div class="road" style="height:2px;width:70%;top:50%;left:15%;"></div>
+              <div class="road" style="height:2px;width:60%;top:68%;left:25%;"></div>
+              <div class="road" style="width:3px;height:100%;left:22%;"></div>
+              <div class="road" style="width:2px;height:60%;left:50%;top:20%;"></div>
+              <div class="road" style="width:2px;height:70%;left:78%;top:10%;"></div>
+
+              <div class="zone zone-hot" style="width:160px;height:160px;top:8%;right:-5%;"></div>
+              <div class="zone zone-warm" style="width:120px;height:120px;top:32%;left:5%;"></div>
+              <div class="zone zone-cool" style="width:100px;height:100px;top:48%;left:35%;"></div>
+            </div>
+
+            <div class="zone-score score-hot" style="top:18%;right:12%;">92</div>
+            <div class="zone-score score-warm" style="top:40%;left:15%;">67</div>
+            <div class="zone-score score-cool" style="top:55%;left:45%;">34</div>
+
+            <div class="user-location" style="top:52%;left:58%;">
+              <div class="user-pulse"></div>
+            </div>
+
+            <div class="status-bar status-bar-dark">
+              <span>9:41</span>
+              <span>100%</span>
+            </div>
+
+            <div class="recommendation" style="bottom:210px;">
+              <span class="arrow">↗</span>
+              <span>Head to Midtown</span>
+              <span class="score">92</span>
+            </div>
+
+            <div class="bottom-sheet" style="height:130px;">
+              <div class="sheet-handle"></div>
+              <div class="sheet-content">
+                <div class="sheet-title">Today's Summary</div>
+                <div class="sheet-stats">
+                  <div class="stat">
+                    <div class="stat-value">$127.50</div>
+                    <div class="stat-label">Earnings</div>
+                  </div>
+                  <div class="stat">
+                    <div class="stat-value cyan">47.2</div>
+                    <div class="stat-label">Miles</div>
+                  </div>
+                  <div class="stat">
+                    <div class="stat-value cyan">12</div>
+                    <div class="stat-label">Deliveries</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-bar">
+              <div class="tab-item active">
+                <div class="tab-icon">◉</div>
+                <span>Zones</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">$</div>
+                <span>Earnings</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">↝</div>
+                <span>Mileage</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">⚙</div>
+                <span>Settings</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-label">Focus Zones (Home)</div>
+      </div>
+
+      <!-- Earnings -->
+      <div class="phone-wrapper">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="status-bar">
+              <span>9:41</span>
+              <span>100%</span>
+            </div>
+
+            <div class="earnings-screen">
+              <div class="earnings-header">
+                <div class="earnings-amount">$127.50</div>
+                <div class="earnings-period">Today</div>
+                <div class="period-selector">
+                  <span class="period-btn active">Day</span>
+                  <span class="period-btn">Week</span>
+                  <span class="period-btn">Month</span>
+                </div>
+              </div>
+
+              <div class="platform-breakdown">
+                <div class="platform-bar">
+                  <div class="platform-header">
+                    <span class="platform-name">DoorDash</span>
+                    <span class="platform-amount">$82.50</span>
+                  </div>
+                  <div class="bar-track">
+                    <div class="bar-fill bar-doordash"></div>
+                  </div>
+                </div>
+                <div class="platform-bar">
+                  <div class="platform-header">
+                    <span class="platform-name">Uber Eats</span>
+                    <span class="platform-amount">$45.00</span>
+                  </div>
+                  <div class="bar-track">
+                    <div class="bar-fill bar-ubereats"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="deliveries-list">
+                <div class="list-header">Recent Deliveries</div>
+                <div class="delivery-item">
+                  <div class="delivery-info">
+                    <div class="delivery-icon">🍕</div>
+                    <div>
+                      <div class="delivery-name">Pizza Hut</div>
+                      <div class="delivery-meta">2:34 PM · DoorDash · 2.1 mi</div>
+                    </div>
+                  </div>
+                  <div class="delivery-amount">$12.00</div>
+                </div>
+                <div class="delivery-item">
+                  <div class="delivery-info">
+                    <div class="delivery-icon">🌮</div>
+                    <div>
+                      <div class="delivery-name">Chipotle</div>
+                      <div class="delivery-meta">1:52 PM · Uber Eats · 1.8 mi</div>
+                    </div>
+                  </div>
+                  <div class="delivery-amount">$8.50</div>
+                </div>
+                <div class="delivery-item">
+                  <div class="delivery-info">
+                    <div class="delivery-icon">🍜</div>
+                    <div>
+                      <div class="delivery-name">Thai Garden</div>
+                      <div class="delivery-meta">12:45 PM · DoorDash · 3.2 mi</div>
+                    </div>
+                  </div>
+                  <div class="delivery-amount">$14.25</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-bar">
+              <div class="tab-item">
+                <div class="tab-icon">◎</div>
+                <span>Zones</span>
+              </div>
+              <div class="tab-item active">
+                <div class="tab-icon">$</div>
+                <span>Earnings</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">↝</div>
+                <span>Mileage</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">⚙</div>
+                <span>Settings</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-label">Earnings</div>
+      </div>
+
+      <!-- Mileage -->
+      <div class="phone-wrapper">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="status-bar">
+              <span>9:41</span>
+              <span>100%</span>
+            </div>
+
+            <div class="mileage-screen">
+              <div class="tracking-status">
+                <div class="tracking-dot"></div>
+                <span class="tracking-text">Tracking Active</span>
+              </div>
+
+              <div class="mileage-header">
+                <div class="mileage-amount">47.2 <span class="mileage-unit">mi</span></div>
+                <div class="tax-saved">$31.62 tax deduction</div>
+              </div>
+
+              <div class="mileage-summary">
+                <div class="mileage-card">
+                  <div class="mileage-card-value">234.5</div>
+                  <div class="mileage-card-label">This Week</div>
+                </div>
+                <div class="mileage-card">
+                  <div class="mileage-card-value">892.1</div>
+                  <div class="mileage-card-label">This Month</div>
+                </div>
+              </div>
+
+              <div class="list-header">Today's Trips</div>
+              <div class="trip-item">
+                <div>
+                  <div class="trip-time">9:15 AM - 10:02 AM</div>
+                  <div class="trip-route">Downtown → Midtown</div>
+                </div>
+                <div class="trip-miles">8.2 mi</div>
+              </div>
+              <div class="trip-item">
+                <div>
+                  <div class="trip-time">11:30 AM - 12:15 PM</div>
+                  <div class="trip-route">Midtown → West Side</div>
+                </div>
+                <div class="trip-miles">12.4 mi</div>
+              </div>
+              <div class="trip-item">
+                <div>
+                  <div class="trip-time">1:45 PM - 2:38 PM</div>
+                  <div class="trip-route">West Side → Downtown</div>
+                </div>
+                <div class="trip-miles">9.8 mi</div>
+              </div>
+            </div>
+
+            <div class="tab-bar">
+              <div class="tab-item">
+                <div class="tab-icon">◎</div>
+                <span>Zones</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">$</div>
+                <span>Earnings</span>
+              </div>
+              <div class="tab-item active">
+                <div class="tab-icon">↝</div>
+                <span>Mileage</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">⚙</div>
+                <span>Settings</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-label">Mileage</div>
+      </div>
+
+      <!-- Settings -->
+      <div class="phone-wrapper">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="status-bar">
+              <span>9:41</span>
+              <span>100%</span>
+            </div>
+
+            <div class="settings-screen">
+              <div class="settings-header">
+                <div class="settings-title">Settings</div>
+              </div>
+
+              <div class="settings-section">
+                <div class="settings-section-title">Connected Platforms</div>
+                <div class="settings-group">
+                  <div class="settings-item">
+                    <div class="platform-connected">
+                      <div class="platform-logo logo-doordash">D</div>
+                      <div>
+                        <div class="settings-item-label">DoorDash</div>
+                        <div class="connected-badge">Connected</div>
+                      </div>
+                    </div>
+                    <span class="settings-arrow">›</span>
+                  </div>
+                  <div class="settings-item">
+                    <div class="platform-connected">
+                      <div class="platform-logo logo-ubereats">U</div>
+                      <div>
+                        <div class="settings-item-label">Uber Eats</div>
+                        <div class="connected-badge">Connected</div>
+                      </div>
+                    </div>
+                    <span class="settings-arrow">›</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-section">
+                <div class="settings-section-title">Preferences</div>
+                <div class="settings-group">
+                  <div class="settings-item">
+                    <span class="settings-item-label">Auto Mileage Tracking</span>
+                    <div class="toggle"></div>
+                  </div>
+                  <div class="settings-item">
+                    <span class="settings-item-label">Zone Alerts</span>
+                    <div class="toggle"></div>
+                  </div>
+                  <div class="settings-item">
+                    <span class="settings-item-label">Notifications</span>
+                    <div class="toggle off"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-section">
+                <div class="settings-section-title">Account</div>
+                <div class="settings-group">
+                  <div class="settings-item">
+                    <span class="settings-item-label">Subscription</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                      <span class="settings-item-value">Pro</span>
+                      <span class="settings-arrow">›</span>
+                    </div>
+                  </div>
+                  <div class="settings-item">
+                    <span class="settings-item-label">Export Tax Documents</span>
+                    <span class="settings-arrow">›</span>
+                  </div>
+                  <div class="settings-item">
+                    <span class="settings-item-label">Log Out</span>
+                    <span class="settings-arrow">›</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-bar">
+              <div class="tab-item">
+                <div class="tab-icon">◎</div>
+                <span>Zones</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">$</div>
+                <span>Earnings</span>
+              </div>
+              <div class="tab-item">
+                <div class="tab-icon">↝</div>
+                <span>Mileage</span>
+              </div>
+              <div class="tab-item active">
+                <div class="tab-icon">⚙</div>
+                <span>Settings</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-label">Settings</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Section 2: Onboarding & Paywall -->
+  <div class="section">
+    <div class="section-title">Onboarding & Monetization</div>
+    <div class="phones-row">
+
+      <!-- Welcome -->
+      <div class="phone-wrapper">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="onboarding-screen">
+              <div class="onboarding-logo">📍</div>
+              <div class="onboarding-title">Stop guessing.<br><span>Start earning.</span></div>
+              <div class="onboarding-subtitle">Know exactly where to be for the best deliveries. Track earnings and mileage automatically.</div>
+
+              <button class="onboarding-btn btn-primary">Get Started</button>
+              <button class="onboarding-btn btn-apple"> Continue with Apple</button>
+              <button class="onboarding-btn btn-google">G Continue with Google</button>
+
+              <div class="onboarding-footer">
+                Already have an account? <a href="#">Sign In</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-label">Welcome</div>
+      </div>
+
+      <!-- Connect Platforms -->
+      <div class="phone-wrapper">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="status-bar">
+              <span>9:41</span>
+              <span>100%</span>
+            </div>
+
+            <div style="padding:70px 24px 40px;">
+              <div style="text-align:center;margin-bottom:40px;">
+                <div style="font-size:48px;margin-bottom:16px;">🔗</div>
+                <div style="font-size:26px;font-weight:700;margin-bottom:8px;">Connect Your Platforms</div>
+                <div style="font-size:15px;color:var(--text-secondary);">Link your accounts to sync earnings automatically</div>
+              </div>
+
+              <div style="background:var(--surface);border-radius:16px;padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;">
+                <div class="platform-logo logo-doordash" style="width:48px;height:48px;font-size:20px;">D</div>
+                <div style="flex:1;">
+                  <div style="font-weight:600;font-size:17px;">DoorDash</div>
+                  <div style="font-size:13px;color:var(--text-muted);">Sync your Dasher earnings</div>
+                </div>
+                <button style="background:var(--primary);color:#000;border:none;padding:10px 20px;border-radius:10px;font-weight:600;">Connect</button>
+              </div>
+
+              <div style="background:var(--surface);border-radius:16px;padding:20px;margin-bottom:40px;display:flex;align-items:center;gap:16px;">
+                <div class="platform-logo logo-ubereats" style="width:48px;height:48px;font-size:20px;">U</div>
+                <div style="flex:1;">
+                  <div style="font-weight:600;font-size:17px;">Uber Eats</div>
+                  <div style="font-size:13px;color:var(--text-muted);">Sync your delivery earnings</div>
+                </div>
+                <button style="background:var(--primary);color:#000;border:none;padding:10px 20px;border-radius:10px;font-weight:600;">Connect</button>
+              </div>
+
+              <button style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-secondary);padding:16px;border-radius:12px;font-size:16px;">Skip for Now</button>
+            </div>
+          </div>
+        </div>
+        <div class="phone-label">Connect Platforms</div>
+      </div>
+
+      <!-- Pro Paywall -->
+      <div class="phone-wrapper">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="paywall-screen">
+              <div class="paywall-close">×</div>
+
+              <div class="paywall-header">
+                <div class="paywall-icon">👑</div>
+                <div class="paywall-title">Giglet Pro</div>
+              </div>
+
+              <div class="paywall-features">
+                <div class="feature-item">
+                  <div class="feature-check">✓</div>
+                  <span class="feature-text">Auto earnings sync</span>
+                </div>
+                <div class="feature-item">
+                  <div class="feature-check">✓</div>
+                  <span class="feature-text">Automatic mileage tracking</span>
+                </div>
+                <div class="feature-item">
+                  <div class="feature-check">✓</div>
+                  <span class="feature-text">Unlimited history</span>
+                </div>
+                <div class="feature-item">
+                  <div class="feature-check">✓</div>
+                  <span class="feature-text">Tax export (PDF + CSV)</span>
+                </div>
+                <div class="feature-item">
+                  <div class="feature-check">✓</div>
+                  <span class="feature-text">Hot zone alerts</span>
+                </div>
+              </div>
+
+              <div class="pricing-cards">
+                <div class="price-card selected">
+                  <div class="price-info">
+                    <div class="radio"></div>
+                    <div>
+                      <div class="price-label">Annual <span class="save-badge">SAVE 42%</span></div>
+                      <div class="price-sublabel">Best value</div>
+                    </div>
+                  </div>
+                  <div class="price-amount">
+                    <div class="price-value">$34.99</div>
+                    <div class="price-period">per year</div>
+                  </div>
+                </div>
+                <div class="price-card">
+                  <div class="price-info">
+                    <div class="radio"></div>
+                    <div>
+                      <div class="price-label">Monthly</div>
+                      <div class="price-sublabel">Flexible</div>
+                    </div>
+                  </div>
+                  <div class="price-amount">
+                    <div class="price-value">$4.99</div>
+                    <div class="price-period">per month</div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="paywall-cta">Continue</button>
+              <div class="paywall-restore"><a href="#">Restore Purchases</a></div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-label">Pro Paywall</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="footer">
+    <p><strong>Giglet UX Design Showcase</strong></p>
+    <p>Clean Pro Theme · Bottom Sheet Direction · Tamagui Components</p>
+    <p style="margin-top:16px;font-size:12px;">Generated by BMad Method - Create UX Design Workflow</p>
+  </div>
+
+</body>
+</html>
