@@ -8,7 +8,10 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "start:prod": "node dist/server.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
+    "db:push": "prisma db push"
   },
   "engines": {
     "node": ">=22.0.0"

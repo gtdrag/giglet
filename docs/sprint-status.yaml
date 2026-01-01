@@ -43,7 +43,7 @@ development_status:
   epic-1: backlog
   1-1-project-scaffolding-and-repository-setup: done
   1-2-database-schema-and-orm-setup: done
-  1-3-ci-cd-pipeline-configuration: backlog
+  1-3-ci-cd-pipeline-configuration: done
   1-4-core-navigation-and-app-shell: backlog
   1-5-api-foundation-and-health-endpoints: backlog
   epic-1-retrospective: optional
