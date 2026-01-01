@@ -1,19 +1,201 @@
 // Prisma Schema for Giglet
-// This is a placeholder - full schema will be implemented in Story 1.2
+// Full schema implementation for Story 1.2
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
 }
 
-// Placeholder model - will be expanded in Story 1.2
+// ============ USERS ============
+
 model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  passwordHash String?
+  name         String?
+  authProvider AuthProvider @default(EMAIL)
+  appleId      String?      @unique
+  googleId     String?      @unique
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  refreshTokens    RefreshToken[]
+  platformAccounts PlatformAccount[]
+  deliveries       Delivery[]
+  trips            Trip[]
+  subscription     Subscription?
+  preferences      UserPreferences?
+}
+
+enum AuthProvider {
+  EMAIL
+  APPLE
+  GOOGLE
+}
+
+model RefreshToken {
   id        String   @id @default(cuid())
-  email     String   @unique
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model UserPreferences {
+  id                   String  @id @default(cuid())
+  userId               String  @unique
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notificationsEnabled Boolean @default(true)
+  zoneAlertsEnabled    Boolean @default(true)
+  autoMileageTracking  Boolean @default(true)
+  darkModeEnabled      Boolean @default(true)
+}
+
+// ============ PLATFORM ACCOUNTS ============
+
+model PlatformAccount {
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform       Platform
+  encryptedCreds String // AES-256 encrypted
+  status         PlatformStatus @default(CONNECTED)
+  lastSyncAt     DateTime?
+  lastSyncError  String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  deliveries Delivery[]
+
+  @@unique([userId, platform])
+  @@index([userId])
+}
+
+enum Platform {
+  DOORDASH
+  UBEREATS
+}
+
+enum PlatformStatus {
+  CONNECTED
+  SYNCING
+  ERROR
+  DISCONNECTED
+}
+
+// ============ EARNINGS ============
+
+model Delivery {
+  id                String          @id @default(cuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platformAccountId String
+  platformAccount   PlatformAccount @relation(fields: [platformAccountId], references: [id], onDelete: Cascade)
+
+  externalId String // Platform's delivery ID
+  platform   Platform
+
+  earnings Decimal @db.Decimal(10, 2)
+  tip      Decimal @db.Decimal(10, 2)
+  basePay  Decimal @db.Decimal(10, 2)
+
+  restaurantName String?
+  deliveredAt    DateTime
+
+  createdAt DateTime @default(now())
+
+  @@unique([platform, externalId])
+  @@index([userId, deliveredAt])
+  @@index([platformAccountId])
+}
+
+// ============ MILEAGE ============
+
+model Trip {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  startedAt DateTime
+  endedAt   DateTime?
+  miles     Decimal   @db.Decimal(10, 2)
+
+  startLat Float
+  startLng Float
+  endLat   Float?
+  endLng   Float?
+
+  isManual Boolean @default(false)
+  purpose  String  @default("Business - Delivery")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId, startedAt])
+}
+
+// ============ SUBSCRIPTIONS ============
+
+model Subscription {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  revenuecatId String             @unique
+  tier         SubscriptionTier   @default(FREE)
+  status       SubscriptionStatus @default(ACTIVE)
+
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO_MONTHLY
+  PRO_ANNUAL
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELED
+  GRACE_PERIOD
+}
+
+// ============ ZONES ============
+
+model Zone {
+  id      String  @id @default(cuid())
+  h3Index String  @unique // H3 resolution 7 hex index
+  name    String? // Human-readable name
+
+  // Cached score components (refreshed every 15 min)
+  restaurantDensity Float @default(0)
+  restaurantRating  Float @default(0)
+
+  // Current score (computed)
+  currentScore Float @default(0)
+
+  // PostGIS geometry for spatial queries
+  geometry Unsupported("geometry(Polygon, 4326)")?
+
+  lastCalculatedAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([h3Index])
+  @@index([currentScore])
 }
