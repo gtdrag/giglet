@@ -35,6 +35,30 @@ function formatDate(dateString: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function formatDateRange(startISO: string, endISO: string, period: EarningsPeriod): string {
+  const start = new Date(startISO);
+  const end = new Date(endISO);
+  // End is exclusive, so subtract 1 day for display
+  end.setDate(end.getDate() - 1);
+
+  const formatOptions: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  const yearFormat: Intl.DateTimeFormatOptions = { ...formatOptions, year: 'numeric' };
+
+  if (period === 'today') {
+    return start.toLocaleDateString('en-US', yearFormat);
+  }
+
+  const startStr = start.toLocaleDateString('en-US', formatOptions);
+  const endStr = end.toLocaleDateString('en-US', yearFormat);
+
+  // If same month, simplify (e.g., "Jan 1 - 7, 2026")
+  if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+    return `${start.toLocaleDateString('en-US', { month: 'short' })} ${start.getDate()} - ${end.getDate()}, ${end.getFullYear()}`;
+  }
+
+  return `${startStr} - ${endStr}`;
+}
+
 function getPlatformColor(platform: string): string {
   switch (platform) {
     case 'DOORDASH':
@@ -146,6 +170,11 @@ export default function EarningsScreen() {
             <Text style={styles.summaryLabel}>
               {period === 'today' ? "Today's" : period === 'week' ? 'This Week' : period === 'month' ? 'This Month' : 'This Year'} Earnings
             </Text>
+            {summary?.dateRange && (
+              <Text style={styles.dateRangeText}>
+                {formatDateRange(summary.dateRange.start, summary.dateRange.end, period)}
+              </Text>
+            )}
             <Text style={styles.summaryValue}>{formatCurrency(summary?.total ?? 0)}</Text>
             <View style={styles.summaryDetails}>
               <View style={styles.summaryDetailItem}>
@@ -292,6 +321,11 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 14,
     color: '#A1A1AA',
+    marginBottom: 4,
+  },
+  dateRangeText: {
+    fontSize: 12,
+    color: '#71717A',
     marginBottom: 8,
   },
   summaryValue: {
