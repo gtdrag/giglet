@@ -24,8 +24,9 @@ This document provides the complete epic and story breakdown for Giglet, decompo
 | 7 | Tax Export | Generate IRS-compliant reports | 5 | P1 |
 | 8 | Subscription & Payments | Monetization via Pro tier | 6 | P0 |
 | 9 | Settings & Profile | User preferences and account management | 5 | P1 |
+| 10 | Tip Tracker | Personal good-tipper location bookmarking | 4 | P0 |
 
-**Total Stories:** 55
+**Total Stories:** 59
 **Estimated Duration:** 14-16 weeks (single developer) or 8-10 weeks (2 developers)
 
 ### Sequencing Rationale
@@ -38,6 +39,8 @@ Epic 1 (Foundation) ──┬──► Epic 2 (Auth) ──► Epic 3 (Linking) 
 Epic 4 + Epic 5 ──► Epic 6 (Mileage) ──► Epic 7 (Tax Export)
 
 Epic 2 ──► Epic 8 (Subscriptions) ──► Epic 9 (Settings)
+
+Epic 5 (Focus Zones) ──► Epic 10 (Tip Tracker) [enhances zone intelligence with personal data]
 ```
 
 - **Epic 1** must complete first (establishes everything)
@@ -406,222 +409,187 @@ Epic 2 ──► Epic 8 (Subscriptions) ──► Epic 9 (Settings)
 
 ---
 
-## Epic 3: Platform Account Linking
+## Epic 3: Earnings Import
 
-**Goal:** Enable users to connect their DoorDash and Uber Eats accounts for automatic earnings synchronization.
+**Goal:** Enable users to import their DoorDash and Uber Eats earnings via CSV export files, providing a simple, secure, and cost-effective way to consolidate earnings data.
 
-**Value:** This is the core automation promise - no more manual tracking. Users connect once and their data syncs automatically.
+**Value:** Users get consolidated earnings view without credential storage risks. No server-side scraping infrastructure needed. Simple, reliable, privacy-respecting approach.
 
 **Exit Criteria:**
-- Users can connect DoorDash account and see earnings
-- Users can connect Uber Eats account and see earnings
-- Connection status is clearly visible
-- Users can disconnect accounts
-- Sync failures are handled gracefully
+- Users can import DoorDash CSV exports
+- Users can import Uber Eats CSV exports
+- Duplicate deliveries are detected and skipped
+- Import history is visible
+- Manual entry available as fallback
+
+**Cost Benefit:** Eliminates ~$50-200/month in Puppeteer/headless browser infrastructure costs. No credential storage liability.
 
 ---
 
-### Story 3.1: DoorDash Account Connection UI
+### Story 3.1: CSV Import UI
 
 **As a** user,
-**I want** to connect my DoorDash account,
-**So that** my DoorDash earnings sync automatically.
+**I want** to import my earnings from a CSV file,
+**So that** I can see all my deliveries in Giglet without sharing credentials.
 
 **Acceptance Criteria:**
 
-**Given** I am on the Accounts screen
-**When** I tap "Connect DoorDash"
-**Then** I see a secure login form for DoorDash credentials
-**And** my credentials are transmitted securely
+**Given** I am on the Earnings or Settings screen
+**When** I tap "Import Earnings"
+**Then** I see options to import from DoorDash or Uber Eats
+**And** I can select a CSV file from my device
 
-**Given** I enter valid DoorDash credentials
-**When** I tap Connect
-**Then** I see a loading indicator
-**And** on success, I see "DoorDash Connected" status
-**And** initial sync begins automatically
+**Given** I select a valid CSV file
+**When** the file is parsed
+**Then** I see a preview of deliveries to import (count, date range, total)
+**And** I can confirm or cancel the import
 
-**Given** I enter invalid credentials
-**When** I tap Connect
-**Then** I see "Invalid email or password. Please try again."
+**Given** the import completes successfully
+**When** I view the confirmation
+**Then** I see "Imported X deliveries from [platform]"
+**And** my earnings dashboard updates with the new data
 
 **Prerequisites:** Story 2.2, Story 1.5
 
 **Technical Notes:**
-- NEVER log credentials
-- Encrypt credentials in transit (HTTPS) and at rest (AES-256)
-- Display trust messaging ("Your credentials are encrypted...")
-- Show what we will and won't do with their account
-- Create LinkedAccount record with platform='doordash'
+- Use expo-document-picker for file selection
+- Support both .csv and .xlsx formats if possible
+- Show import preview before committing
+- Platform auto-detection from CSV column headers
+- Client-side parsing for instant preview, server-side for persistence
 
 ---
 
-### Story 3.2: DoorDash Earnings Sync Backend
+### Story 3.2: CSV Parser Backend
 
-**As a** user with a connected DoorDash account,
-**I want** my earnings to sync automatically,
-**So that** I see my DoorDash deliveries in Giglet.
+**As a** system,
+**I want** to parse DoorDash and Uber Eats CSV formats,
+**So that** earnings data is normalized and stored correctly.
 
 **Acceptance Criteria:**
 
-**Given** my DoorDash account is connected
-**When** the sync job runs
-**Then** my recent deliveries are fetched from DoorDash
-**And** each delivery is stored with: timestamp, base_pay, tip, restaurant
-**And** sync status is updated to "success" with timestamp
+**Given** a DoorDash CSV is uploaded
+**When** the parser processes it
+**Then** each row is mapped to: deliveredAt, basePay, tip, earnings, restaurantName
+**And** data is normalized to common Delivery model
 
-**Given** DoorDash login session expires
-**When** the sync job runs
-**Then** sync status shows "Error: Please reconnect"
-**And** user is notified to re-authenticate
+**Given** an Uber Eats CSV is uploaded
+**When** the parser processes it
+**Then** each row is mapped to the same common format
+**And** Uber Rides entries are filtered out (delivery only)
+
+**Given** a CSV with invalid/missing data
+**When** the parser encounters errors
+**Then** invalid rows are skipped with warning
+**And** valid rows are still imported
+**And** user sees summary of skipped rows
 
 **Prerequisites:** Story 3.1
 
 **Technical Notes:**
-- Implement session-based data retrieval from DoorDash
-- Handle pagination for historical earnings
-- Store session tokens encrypted
-- Queue sync jobs (Bull/Celery) - don't block API
-- Implement exponential backoff on failures
-- Rate limit requests to avoid detection
+- DoorDash CSV columns: Date, Subtotal, Tip, Total, etc.
+- Uber Eats CSV columns: Trip Date, Fare, Tip, etc.
+- Use csv-parse or papaparse library
+- Normalize timestamps to UTC
+- Handle currency formatting variations ($1,234.56 vs 1234.56)
+- Store original platform and external ID for deduplication
 
 ---
 
-### Story 3.3: Uber Eats Account Connection UI
+### Story 3.3: Import History & Duplicate Detection
 
 **As a** user,
-**I want** to connect my Uber Eats account,
-**So that** my Uber Eats earnings sync automatically.
+**I want** to see my import history and avoid duplicate entries,
+**So that** my earnings data stays accurate.
 
 **Acceptance Criteria:**
 
-**Given** I am on the Accounts screen
-**When** I tap "Connect Uber Eats"
-**Then** I see a secure login form for Uber credentials
-**And** my credentials are transmitted securely
+**Given** I have previously imported deliveries
+**When** I import a CSV with overlapping dates
+**Then** duplicate deliveries are detected by (platform + date + amount)
+**And** I see "X new, Y duplicates skipped"
+**And** only new deliveries are added
 
-**Given** I enter valid Uber credentials
-**When** I tap Connect
-**Then** I see a loading indicator
-**And** on success, I see "Uber Eats Connected" status
-**And** initial sync begins automatically
+**Given** I want to see past imports
+**When** I view import history
+**Then** I see list of imports with: date, platform, count imported
+**And** I can delete an entire import batch if needed
 
-**Prerequisites:** Story 3.1 (parallel implementation)
+**Prerequisites:** Story 3.2
 
 **Technical Notes:**
-- Same security requirements as DoorDash
-- Uber uses same login for Uber Rides and Uber Eats
-- Ensure we only fetch Uber Eats (delivery) data, not rides
-- Create LinkedAccount record with platform='uber_eats'
+- Deduplicate by composite key: platform + deliveredAt + earnings amount
+- Store importBatchId on each Delivery for batch operations
+- Allow batch deletion (undo import) with confirmation
+- Show last import date per platform on main import screen
 
 ---
 
-### Story 3.4: Uber Eats Earnings Sync Backend
-
-**As a** user with a connected Uber Eats account,
-**I want** my earnings to sync automatically,
-**So that** I see my Uber Eats deliveries in Giglet.
-
-**Acceptance Criteria:**
-
-**Given** my Uber Eats account is connected
-**When** the sync job runs
-**Then** my recent deliveries are fetched from Uber Eats
-**And** each delivery is stored with: timestamp, base_pay, tip, restaurant
-**And** sync status is updated to "success" with timestamp
-
-**Prerequisites:** Story 3.3
-
-**Technical Notes:**
-- Implement Uber session management
-- Filter for Uber Eats deliveries only (not rides)
-- Handle Uber's data format differences from DoorDash
-- Same queuing and error handling as DoorDash
-
----
-
-### Story 3.5: Account Connection Status Display
+### Story 3.4: Manual Delivery Entry
 
 **As a** user,
-**I want** to see the status of my connected accounts,
-**So that** I know if my data is syncing correctly.
+**I want** to manually add individual deliveries,
+**So that** I can track earnings even without CSV export.
 
 **Acceptance Criteria:**
 
-**Given** I have connected accounts
-**When** I view the Accounts screen
-**Then** I see each platform with status: Connected/Syncing/Error
-**And** I see the last successful sync timestamp
-**And** for errors, I see a clear message and "Reconnect" button
+**Given** I want to add a delivery manually
+**When** I tap "Add Delivery"
+**Then** I see a form with: platform, date, base pay, tip, restaurant (optional)
+**And** I can save the entry
 
-**Given** no accounts are connected
-**When** I view the Accounts screen
-**Then** I see prompts to connect DoorDash and Uber Eats
-**And** I understand the value of connecting ("See all earnings in one place")
+**Given** I save a manual entry
+**When** viewing my earnings
+**Then** the manual entry appears in the list
+**And** it's marked as "Manual" to distinguish from imports
 
-**Prerequisites:** Story 3.2, Story 3.4
+**Given** I made an error
+**When** I tap on any delivery (imported or manual)
+**Then** I can edit or delete it
+
+**Prerequisites:** Story 3.2
 
 **Technical Notes:**
-- Poll or use websockets for real-time status updates
-- Status states: not_connected, connecting, connected, syncing, error
-- Show human-readable timestamps ("Last synced 5 minutes ago")
+- Quick entry form - minimal required fields (platform, date, total)
+- Auto-calculate total from base + tip if both entered
+- Mark isManual=true on Delivery record
+- Allow editing any delivery (not just manual ones)
 
 ---
 
-### Story 3.6: Account Disconnection
+### Story 3.5: Import Tutorial & Platform Deep Links
 
 **As a** user,
-**I want** to disconnect a linked account,
-**So that** I can remove access if needed.
+**I want** clear instructions on how to export from DoorDash/Uber,
+**So that** I can easily get my CSV files.
 
 **Acceptance Criteria:**
 
-**Given** I have a connected account
-**When** I tap "Disconnect" on that account
-**Then** I see a confirmation dialog
-**And** if confirmed, the connection is removed
-**And** stored credentials are deleted
-**And** historical earnings data is retained
+**Given** I tap "Import from DoorDash"
+**When** I haven't imported before (or tap "How to export")
+**Then** I see a 3-step visual tutorial:
+  1. Open DoorDash app → Earnings
+  2. Tap "..." menu → Download CSV
+  3. Select date range → Download
 
-**Given** I have disconnected an account
-**When** I view my earnings history
-**Then** I still see past earnings from that platform
-**And** the platform is marked as "Disconnected" in history
+**Given** I view the tutorial
+**When** I tap "Open DoorDash"
+**Then** the DoorDash app opens (if installed)
+**Or** I'm taken to the DoorDash website earnings page
 
-**Prerequisites:** Story 3.5
+**Given** I'm on the import screen
+**When** the tutorial is available
+**Then** I can skip it and go straight to file picker
 
-**Technical Notes:**
-- Securely delete credentials from database
-- Keep Delivery records (orphaned but historical)
-- Update LinkedAccount status, don't hard delete (audit trail)
-- Stop any pending sync jobs for that account
-
----
-
-### Story 3.7: Sync Failure Notifications
-
-**As a** user,
-**I want** to be notified when my account sync fails,
-**So that** I can fix the issue and keep my data current.
-
-**Acceptance Criteria:**
-
-**Given** my account sync fails
-**When** the failure is detected
-**Then** I receive a push notification: "DoorDash sync failed. Tap to reconnect."
-**And** I see an in-app alert on the Accounts screen
-**And** tapping the notification opens the Accounts screen
-
-**Given** sync has been failing for 24 hours
-**When** I open the app
-**Then** I see a prominent banner prompting reconnection
-
-**Prerequisites:** Story 3.5
+**Prerequisites:** Story 3.1
 
 **Technical Notes:**
-- Don't spam notifications - max 1 per 24 hours per platform
-- Track failure count and duration
-- Clear notifications when user reconnects successfully
-- Use FCM (Android) and APNs (iOS)
+- Use Linking.openURL for deep links to platform apps
+- DoorDash deep link: doordash://earnings (verify actual scheme)
+- Uber deep link: uber://earnings (verify actual scheme)
+- Fallback to web URLs if app not installed
+- Store "tutorialSeen" flag to auto-skip on repeat imports
+- Include screenshots in tutorial (stored as local assets)
 
 ---
 
@@ -1770,7 +1738,136 @@ Epic 2 ──► Epic 8 (Subscriptions) ──► Epic 9 (Settings)
 
 ---
 
-## Epic 10: Referral Program (Post-MVP)
+## Epic 10: Tip Tracker
+
+**Goal:** Enable drivers to bookmark locations where they received good tips, building a personal database of high-value delivery spots that enhances Focus Zone intelligence.
+
+**Value:** Drivers build personalized tip intelligence over time. This is data they can't get from platform CSV exports (which don't include customer addresses). Creates sticky engagement as the data becomes more valuable with use.
+
+**Exit Criteria:**
+- One-tap tip logging captures GPS location
+- T-shirt size rating (S/M/L/XL/XXL) for relative tip quality
+- Logged tips display as map layer on Focus Zones
+- Filtering by tip size works
+
+---
+
+### Story 10.1: Tip Logging Button and UI
+
+**As a** driver who just received a good tip,
+**I want** to quickly log this location,
+**So that** I can remember where good tippers are.
+
+**Acceptance Criteria:**
+
+**Given** I am on the Map tab
+**When** I tap the "Log Tip" floating action button
+**Then** I see a quick picker with t-shirt sizes: None | S | M | L | XL | XXL
+**And** selecting a size saves my current GPS location with that rating
+**And** I see brief confirmation ("Tip logged!")
+
+**Given** I am anywhere in the app
+**When** I want to log a tip
+**Then** I can access the Log Tip button from the map tab quickly
+
+**Prerequisites:** Story 5.1 (Focus Zones Map)
+
+**Technical Notes:**
+- Floating action button (FAB) on map screen
+- Quick size picker - no typing required
+- Haptic feedback on save
+- Capture lat/lng from device GPS at moment of tap
+- Consider: show last tip logged location briefly on map
+
+---
+
+### Story 10.2: Tip Location Storage Backend
+
+**As a** system,
+**I want** to store tip location data per user,
+**So that** drivers can build their personal tip database.
+
+**Acceptance Criteria:**
+
+**Given** a driver logs a tip
+**When** the data is saved
+**Then** it stores: userId, lat, lng, tipSize (enum), timestamp
+**And** the record is queryable by user and location
+
+**Given** a driver has many logged tips
+**When** they query their tips
+**Then** results can be filtered by tipSize
+**And** results can be filtered by date range
+**And** results can be bounded by map viewport
+
+**Prerequisites:** Story 1.2 (Database), Story 10.1
+
+**Technical Notes:**
+- New TipLog table: id, userId, lat, lng, tipSize (enum: NONE/S/M/L/XL/XXL), createdAt
+- Index on userId for fast queries
+- Spatial index on lat/lng for viewport queries
+- Consider H3 indexing for clustering
+
+---
+
+### Story 10.3: Tip Locations Map Layer
+
+**As a** driver,
+**I want** to see my logged tip locations on the map,
+**So that** I can identify high-value areas.
+
+**Acceptance Criteria:**
+
+**Given** I have logged tips
+**When** I toggle "My Tips" layer on the map
+**Then** I see markers at my logged tip locations
+**And** markers are color-coded by tip size (e.g., green=L/XL/XXL, yellow=M, gray=S/None)
+**And** nearby markers cluster when zoomed out
+
+**Given** I tap on a tip marker
+**When** the detail appears
+**Then** I see: tip size, date logged, address (reverse geocoded)
+
+**Prerequisites:** Story 5.1 (Focus Zones Map), Story 10.2
+
+**Technical Notes:**
+- Toggle in map controls for "My Tips" layer
+- Color scale: XXL=dark green, XL=green, L=light green, M=yellow, S=orange, None=red
+- Cluster markers at low zoom levels
+- Reverse geocode on tap (not on render - save API calls)
+- Cache reverse geocoding results
+
+---
+
+### Story 10.4: Tip Filter Controls
+
+**As a** driver,
+**I want** to filter which tips show on the map,
+**So that** I can focus on high-value locations.
+
+**Acceptance Criteria:**
+
+**Given** I am viewing My Tips layer
+**When** I tap the filter button
+**Then** I can select minimum tip size to display (e.g., "L and above")
+**And** the map updates to show only matching tips
+
+**Given** I filter to "XL and above"
+**When** viewing the map
+**Then** only XL and XXL tips are shown
+**And** filter state persists across sessions
+
+**Prerequisites:** Story 10.3
+
+**Technical Notes:**
+- Simple dropdown or chip selector
+- Store filter preference in user settings
+- Update map layer on filter change
+- Show count of filtered/total tips
+
+---
+
+## Epic 11: Referral Program (Post-MVP)
 
 **Goal:** Implement a driver-to-driver referral system with incentives to enable grassroots user acquisition.
 
@@ -1786,7 +1883,7 @@ Epic 2 ──► Epic 8 (Subscriptions) ──► Epic 9 (Settings)
 
 ---
 
-### Story 10.1: Referral Code Generation
+### Story 11.1: Referral Code Generation
 
 **As a** user,
 **I want** a unique referral code and shareable link,
@@ -1805,7 +1902,7 @@ Epic 2 ──► Epic 8 (Subscriptions) ──► Epic 9 (Settings)
 
 ---
 
-### Story 10.2: Referral Tracking
+### Story 11.2: Referral Tracking
 
 **As a** system,
 **I want** to track which referrals convert,
@@ -1824,7 +1921,7 @@ Epic 2 ──► Epic 8 (Subscriptions) ──► Epic 9 (Settings)
 
 ---
 
-### Story 10.3: Referral Dashboard
+### Story 11.3: Referral Dashboard
 
 **As a** user,
 **I want** to see my referral stats,
@@ -1837,7 +1934,7 @@ Epic 2 ──► Epic 8 (Subscriptions) ──► Epic 9 (Settings)
 
 ---
 
-### Story 10.4: Referral Payout System
+### Story 11.4: Referral Payout System
 
 **As a** user with converted referrals,
 **I want** to receive my referral bonus,
@@ -1855,7 +1952,7 @@ Epic 2 ──► Epic 8 (Subscriptions) ──► Epic 9 (Settings)
 
 ---
 
-### Story 10.5: QR Code Card Design Assets
+### Story 11.5: QR Code Card Design Assets
 
 **As a** marketing asset,
 **I want** printable QR code cards,
@@ -1875,16 +1972,108 @@ Epic 2 ──► Epic 8 (Subscriptions) ──► Epic 9 (Settings)
 |------|---------|----------|--------------|
 | 1. Foundation | 5 | P0 | None |
 | 2. User Authentication | 6 | P0 | Epic 1 |
-| 3. Platform Account Linking | 7 | P0 | Epic 1, 2 |
+| 3. Earnings Import | 5 | P0 | Epic 1, 2 |
 | 4. Earnings Dashboard | 6 | P0 | Epic 3 |
 | 5. Giglet Focus Zones | 8 | P0 | Epic 1 |
 | 6. Automatic Mileage Tracking | 7 | P0 | Epic 1, 2 |
 | 7. Tax Export | 5 | P1 | Epic 4, 6, 8 |
 | 8. Subscription & Payments | 6 | P0 | Epic 2 |
 | 9. Settings & Profile | 5 | P1 | Epic 2 |
-| 10. Referral Program | 5 | P2 | Epic 2, 8 |
+| 10. Tip Tracker | 4 | P0 | Epic 5 |
+| 11. Referral Program | 5 | P2 | Epic 2, 8 |
 
-**Total: 60 stories across 10 epics**
+**Total: 62 stories across 11 epics**
+
+---
+
+## Appendix: Future Enhancements
+
+### Epic 3 Alternative: Automated Platform Sync (Deferred)
+
+**Status:** Deferred to post-MVP
+**Rationale:** CSV import approach eliminates ~$50-200/month infrastructure cost and credential storage liability. Can revisit if user demand justifies the complexity.
+
+The following stories would enable fully automatic earnings sync via server-side scraping:
+
+---
+
+#### Story 3.X.1: Platform Account Connection UI (Credential-Based)
+
+**As a** user,
+**I want** to connect my platform account with credentials,
+**So that** my earnings sync automatically without manual CSV exports.
+
+**Acceptance Criteria:**
+- User enters DoorDash/Uber credentials securely
+- Credentials encrypted in transit (HTTPS) and at rest (AES-256)
+- Connection status displayed clearly
+- Initial sync begins automatically on successful connection
+
+**Technical Notes:**
+- Requires Puppeteer/Playwright infrastructure (~$50-200/month)
+- Store encrypted credentials server-side
+- Display trust messaging and privacy policy
+- Handle 2FA flows
+
+---
+
+#### Story 3.X.2: Automated Earnings Sync Backend
+
+**As a** user with connected account,
+**I want** my earnings to sync automatically,
+**So that** I always see current data without manual effort.
+
+**Acceptance Criteria:**
+- Sync job runs every 4 hours per connected account
+- Session management handles token refresh
+- Sync failures trigger user notification
+- Exponential backoff on failures
+
+**Technical Notes:**
+- BullMQ job queue for sync orchestration
+- Puppeteer/Playwright for headless browser automation
+- Handle platform UI changes (maintenance burden)
+- Rate limiting to avoid detection
+
+---
+
+#### Story 3.X.3: Sync Failure Notifications
+
+**As a** user,
+**I want** to be notified when sync fails,
+**So that** I can reconnect if needed.
+
+**Acceptance Criteria:**
+- Push notification on sync failure
+- In-app banner for persistent failures (>24 hours)
+- Clear "Reconnect" CTA
+
+---
+
+#### Story 3.X.4: WebView-Assist Import (Hybrid Approach)
+
+**As a** user,
+**I want** to import earnings via in-app browser,
+**So that** I get semi-automated sync without sharing credentials with server.
+
+**Acceptance Criteria:**
+- In-app WebView opens platform earnings page
+- User logs in themselves (client-side only)
+- App scrapes earnings data from DOM after login
+- No credentials sent to server
+
+**Technical Notes:**
+- WebView with injected JavaScript for DOM scraping
+- All processing client-side (zero server cost)
+- User handles their own 2FA/captchas
+- Could be Pro feature to differentiate from CSV import
+
+**Cost:** $0 infrastructure (all client-side)
+**Complexity:** Medium - need to maintain scraping selectors
+
+---
+
+_These stories preserved for future consideration if user demand justifies the added complexity and cost._
 
 ---
 

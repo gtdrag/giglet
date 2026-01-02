@@ -61,16 +61,14 @@ development_status:
   epic-2-retrospective: optional
 
   # ============================================
-  # Epic 3: Platform Account Linking (7 stories)
+  # Epic 3: Earnings Import (5 stories) - CSV-based approach
   # ============================================
   epic-3: backlog
-  3-1-doordash-account-connection-ui: backlog
-  3-2-doordash-earnings-sync-backend: backlog
-  3-3-uber-eats-account-connection-ui: backlog
-  3-4-uber-eats-earnings-sync-backend: backlog
-  3-5-account-connection-status-display: backlog
-  3-6-account-disconnection: backlog
-  3-7-sync-failure-notifications: backlog
+  3-1-csv-import-ui: backlog
+  3-2-csv-parser-backend: backlog
+  3-3-import-history-duplicate-detection: backlog
+  3-4-manual-delivery-entry: backlog
+  3-5-import-tutorial-deep-links: backlog
   epic-3-retrospective: optional
 
   # ============================================
@@ -88,11 +86,11 @@ development_status:
   # ============================================
   # Epic 5: Giglet Focus Zones (8 stories)
   # ============================================
-  epic-5: backlog
-  5-1-focus-zones-map-display: backlog
-  5-2-zone-scoring-algorithm-backend: backlog
-  5-3-meal-time-boost-logic: backlog
-  5-4-weather-impact-integration: backlog
+  epic-5: contexted
+  5-1-focus-zones-map-display: done
+  5-2-zone-scoring-algorithm-backend: done
+  5-3-meal-time-boost-logic: done
+  5-4-weather-impact-integration: done
   5-5-event-boost-integration: backlog
   5-6-zone-tap-detail-view: backlog
   5-7-best-zone-recommendation-banner: backlog
@@ -145,3 +143,13 @@ development_status:
   9-4-account-deletion: backlog
   9-5-logout: backlog
   epic-9-retrospective: optional
+
+  # ============================================
+  # Epic 10: Tip Tracker (4 stories)
+  # ============================================
+  epic-10: backlog
+  10-1-tip-logging-button-and-ui: backlog
+  10-2-tip-location-storage-backend: backlog
+  10-3-tip-locations-map-layer: backlog
+  10-4-tip-filter-controls: backlog
+  epic-10-retrospective: optional
