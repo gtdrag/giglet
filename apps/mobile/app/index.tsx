@@ -1,17 +1,26 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useAuthStore } from '../src/stores/authStore';
+import { hasCompletedOnboarding } from '../src/utils/onboarding';
 
 export default function Index() {
   const { isAuthenticated, isLoading, checkAuthStatus } = useAuthStore();
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
 
   useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
 
-  // Show loading while checking auth status
-  if (isLoading) {
+  // Check onboarding status when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      hasCompletedOnboarding().then(setOnboardingComplete);
+    }
+  }, [isAuthenticated]);
+
+  // Show loading while checking auth status or onboarding status
+  if (isLoading || (isAuthenticated && onboardingComplete === null)) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#06B6D4" />
@@ -19,9 +28,12 @@ export default function Index() {
     );
   }
 
-  // Redirect based on auth state
+  // Redirect based on auth state and onboarding status
   if (isAuthenticated) {
-    return <Redirect href="/(tabs)/zones" />;
+    if (onboardingComplete) {
+      return <Redirect href="/(tabs)/zones" />;
+    }
+    return <Redirect href="/(auth)/onboarding" />;
   }
 
   return <Redirect href="/(auth)/login" />;

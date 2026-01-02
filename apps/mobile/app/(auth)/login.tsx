@@ -18,10 +18,26 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { GoogleSignin, GoogleSigninButton, statusCodes } from '@react-native-google-signin/google-signin';
 import { useAuthStore } from '../../src/stores/authStore';
 import { AuthError, forgotPassword } from '../../src/services/auth';
+import { hasCompletedOnboarding } from '../../src/utils/onboarding';
 
 export default function LoginScreen() {
   const { login, appleAuth, googleAuth, isLoading, error } = useAuthStore();
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+
+  // Navigate based on onboarding status
+  const navigateAfterAuth = async (isNewUser: boolean = false) => {
+    if (isNewUser) {
+      router.replace('/(auth)/onboarding');
+      return;
+    }
+    // For returning users, check if they've completed onboarding
+    const completed = await hasCompletedOnboarding();
+    if (completed) {
+      router.replace('/(tabs)/zones');
+    } else {
+      router.replace('/(auth)/onboarding');
+    }
+  };
 
   // Configure Google Sign In and check Apple availability on mount
   useEffect(() => {
@@ -45,7 +61,7 @@ export default function LoginScreen() {
 
       if (response.type === 'success' && response.data.idToken) {
         await googleAuth({ idToken: response.data.idToken });
-        router.replace('/(tabs)/zones');
+        await navigateAfterAuth();
       }
     } catch (err: unknown) {
       const error = err as { code?: string };
@@ -82,7 +98,7 @@ export default function LoginScreen() {
           : undefined,
       });
 
-      router.replace('/(tabs)/zones');
+      await navigateAfterAuth();
     } catch (err) {
       // User cancelled or error - error is set in store
       if ((err as Error).message?.includes('cancelled')) {
@@ -129,8 +145,8 @@ export default function LoginScreen() {
         password,
       });
 
-      // Navigate to main app on success
-      router.replace('/(tabs)/zones');
+      // Navigate based on onboarding status
+      await navigateAfterAuth();
     } catch (err) {
       if (err instanceof AuthError && err.details) {
         const errors: Record<string, string> = {};

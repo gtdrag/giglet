@@ -57,8 +57,8 @@ export default function RegisterScreen() {
         name: name.trim() || undefined,
       });
 
-      // Navigate to main app on success
-      router.replace('/(tabs)/zones');
+      // Navigate to onboarding for new users
+      router.replace('/(auth)/onboarding');
     } catch (err) {
       if (err instanceof AuthError && err.details) {
         const errors: Record<string, string> = {};
