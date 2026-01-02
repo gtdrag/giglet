@@ -2,7 +2,7 @@
 
 **Epic:** 3 - Platform Account Linking
 **Story ID:** 3.1
-**Status:** in_progress
+**Status:** done
 **Priority:** P0
 **Created:** 2026-01-01
 
