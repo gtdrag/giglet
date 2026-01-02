@@ -1,19 +1,29 @@
 import { Router } from 'express';
 import { authController } from '../controllers/auth.controller';
 import { validate } from '../middleware/validate.middleware';
-import { RegisterSchema, LoginSchema, RefreshTokenSchema, AppleAuthSchema, GoogleAuthSchema } from '../schemas/auth.schema';
+import {
+  RegisterSchema,
+  LoginSchema,
+  RefreshTokenSchema,
+  AppleAuthSchema,
+  GoogleAuthSchema,
+  ForgotPasswordSchema,
+  ResetPasswordSchema,
+} from '../schemas/auth.schema';
 
 const router = Router();
 
 /**
  * Auth Routes
  *
- * POST /api/v1/auth/register - Register with email/password
- * POST /api/v1/auth/login    - Login with email/password
- * POST /api/v1/auth/apple    - Sign in with Apple
- * POST /api/v1/auth/google   - Sign in with Google
- * POST /api/v1/auth/refresh  - Refresh access token
- * POST /api/v1/auth/logout   - Logout and revoke refresh token
+ * POST /api/v1/auth/register        - Register with email/password
+ * POST /api/v1/auth/login           - Login with email/password
+ * POST /api/v1/auth/apple           - Sign in with Apple
+ * POST /api/v1/auth/google          - Sign in with Google
+ * POST /api/v1/auth/forgot-password - Request password reset
+ * POST /api/v1/auth/reset-password  - Reset password with token
+ * POST /api/v1/auth/refresh         - Refresh access token
+ * POST /api/v1/auth/logout          - Logout and revoke refresh token
  */
 
 // Register a new user
@@ -42,6 +52,16 @@ router.post('/apple', validate(AppleAuthSchema), (req, res, next) =>
 // Sign in with Google
 router.post('/google', validate(GoogleAuthSchema), (req, res, next) =>
   authController.googleAuth(req, res, next)
+);
+
+// Request password reset
+router.post('/forgot-password', validate(ForgotPasswordSchema), (req, res, next) =>
+  authController.forgotPassword(req, res, next)
+);
+
+// Reset password with token
+router.post('/reset-password', validate(ResetPasswordSchema), (req, res, next) =>
+  authController.resetPassword(req, res, next)
 );
 
 export default router;

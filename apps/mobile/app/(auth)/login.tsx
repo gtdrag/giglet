@@ -9,13 +9,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { GoogleSignin, GoogleSigninButton, statusCodes } from '@react-native-google-signin/google-signin';
 import { useAuthStore } from '../../src/stores/authStore';
-import { AuthError } from '../../src/services/auth';
+import { AuthError, forgotPassword } from '../../src/services/auth';
 
 export default function LoginScreen() {
   const { login, appleAuth, googleAuth, isLoading, error } = useAuthStore();
@@ -95,6 +97,12 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  // Forgot password modal state
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [forgotPasswordError, setForgotPasswordError] = useState('');
+
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
@@ -132,6 +140,46 @@ export default function LoginScreen() {
         setFieldErrors(errors);
       }
     }
+  };
+
+  const handleForgotPassword = async () => {
+    // Validate email
+    if (!forgotPasswordEmail.trim()) {
+      setForgotPasswordError('Email is required');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotPasswordEmail)) {
+      setForgotPasswordError('Please enter a valid email');
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    setForgotPasswordError('');
+
+    try {
+      await forgotPassword({ email: forgotPasswordEmail.trim().toLowerCase() });
+      setShowForgotPassword(false);
+      setForgotPasswordEmail('');
+      Alert.alert(
+        'Check Your Email',
+        'If an account exists with that email, you will receive password reset instructions.',
+        [{ text: 'OK' }]
+      );
+    } catch (err) {
+      if (err instanceof AuthError) {
+        setForgotPasswordError(err.message);
+      } else {
+        setForgotPasswordError('Something went wrong. Please try again.');
+      }
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  const openForgotPassword = () => {
+    setForgotPasswordEmail(email); // Pre-fill with login email if entered
+    setForgotPasswordError('');
+    setShowForgotPassword(true);
   };
 
   return (
@@ -205,6 +253,9 @@ export default function LoginScreen() {
                 {fieldErrors.password && (
                   <Text style={styles.fieldError}>{fieldErrors.password}</Text>
                 )}
+                <Pressable onPress={openForgotPassword} style={styles.forgotPasswordLink}>
+                  <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+                </Pressable>
               </View>
 
               {/* Login Button */}
@@ -263,6 +314,68 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        visible={showForgotPassword}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowForgotPassword(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Pressable onPress={() => setShowForgotPassword(false)} style={styles.modalCloseButton}>
+              <Text style={styles.modalCloseText}>Cancel</Text>
+            </Pressable>
+            <Text style={styles.modalTitle}>Reset Password</Text>
+            <View style={styles.modalCloseButton} />
+          </View>
+
+          <View style={styles.modalContent}>
+            <Text style={styles.modalDescription}>
+              Enter your email address and we'll send you instructions to reset your password.
+            </Text>
+
+            {forgotPasswordError && (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorBannerText}>{forgotPasswordError}</Text>
+              </View>
+            )}
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                value={forgotPasswordEmail}
+                onChangeText={(text) => {
+                  setForgotPasswordEmail(text);
+                  setForgotPasswordError('');
+                }}
+                placeholder="you@example.com"
+                placeholderTextColor="#71717A"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                autoCorrect={false}
+                autoFocus
+                editable={!forgotPasswordLoading}
+              />
+            </View>
+
+            <Pressable
+              style={[styles.loginButton, forgotPasswordLoading && styles.loginButtonDisabled]}
+              onPress={handleForgotPassword}
+              disabled={forgotPasswordLoading}
+            >
+              {forgotPasswordLoading ? (
+                <ActivityIndicator color="#09090B" />
+              ) : (
+                <Text style={styles.loginButtonText}>Send Reset Email</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -406,5 +519,47 @@ const styles = StyleSheet.create({
   googleButton: {
     width: '100%',
     height: 50,
+  },
+  forgotPasswordLink: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+  },
+  forgotPasswordText: {
+    color: '#06B6D4',
+    fontSize: 14,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#09090B',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#27272A',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FAFAFA',
+  },
+  modalCloseButton: {
+    width: 60,
+  },
+  modalCloseText: {
+    color: '#06B6D4',
+    fontSize: 16,
+  },
+  modalContent: {
+    padding: 20,
+  },
+  modalDescription: {
+    color: '#A1A1AA',
+    fontSize: 16,
+    marginBottom: 24,
+    lineHeight: 24,
   },
 });

@@ -1,7 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/auth.service';
 import { successResponse } from '../types/api.types';
-import type { RegisterInput, LoginInput, RefreshTokenInput, AppleAuthInput, GoogleAuthInput } from '../schemas/auth.schema';
+import type {
+  RegisterInput,
+  LoginInput,
+  RefreshTokenInput,
+  AppleAuthInput,
+  GoogleAuthInput,
+  ForgotPasswordInput,
+  ResetPasswordInput,
+} from '../schemas/auth.schema';
 
 class AuthController {
   /**
@@ -118,6 +126,37 @@ class AuthController {
           refreshToken: result.tokens.refreshToken,
         })
       );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/v1/auth/forgot-password
+   * Request password reset email
+   */
+  async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const input: ForgotPasswordInput = req.body;
+      await authService.forgotPassword(input);
+
+      // Always return success to prevent email enumeration
+      res.json(successResponse({ message: 'If an account exists, a reset email has been sent.' }));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/v1/auth/reset-password
+   * Reset password using token
+   */
+  async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const input: ResetPasswordInput = req.body;
+      await authService.resetPassword(input);
+
+      res.json(successResponse({ message: 'Password reset successfully. You can now log in.' }));
     } catch (error) {
       next(error);
     }

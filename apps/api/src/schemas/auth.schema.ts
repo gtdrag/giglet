@@ -72,3 +72,28 @@ export const GoogleAuthSchema = z.object({
 });
 
 export type GoogleAuthInput = z.infer<typeof GoogleAuthSchema>;
+
+/**
+ * Forgot password request schema
+ */
+export const ForgotPasswordSchema = z.object({
+  email: z
+    .string({ message: 'Email is required' })
+    .email('Please enter a valid email')
+    .transform((val) => val.toLowerCase().trim()),
+});
+
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
+
+/**
+ * Reset password request schema
+ */
+export const ResetPasswordSchema = z.object({
+  token: z.string({ message: 'Reset token is required' }),
+  newPassword: z
+    .string({ message: 'New password is required' })
+    .min(8, 'Password must be at least 8 characters')
+    .refine((val) => /\d/.test(val), 'Password must contain at least 1 number'),
+});
+
+export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;

@@ -44,6 +44,10 @@ export interface GoogleAuthInput {
   idToken: string;
 }
 
+export interface ForgotPasswordInput {
+  email: string;
+}
+
 /**
  * Register a new user
  */
@@ -123,6 +127,21 @@ export async function googleAuth(input: GoogleAuthInput): Promise<AuthResponse> 
     await storeTokens(accessToken, refreshToken);
 
     return { user, accessToken, refreshToken };
+  } catch (error) {
+    if (error instanceof AxiosError && error.response?.data) {
+      const apiError = error.response.data.error as ApiError;
+      throw new AuthError(apiError.code, apiError.message, apiError.details);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Request password reset email
+ */
+export async function forgotPassword(input: ForgotPasswordInput): Promise<void> {
+  try {
+    await api.post('/auth/forgot-password', input);
   } catch (error) {
     if (error instanceof AxiosError && error.response?.data) {
       const apiError = error.response.data.error as ApiError;

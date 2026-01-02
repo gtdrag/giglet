@@ -1,11 +1,21 @@
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../lib/prisma';
 import { config } from '../config';
+import { logger } from '../utils/logger';
 import { generateAccessToken, generateRefreshToken, parseExpiry } from '../utils/jwt';
 import { AppError, errors } from '../middleware/error.middleware';
-import type { RegisterInput, LoginInput, RefreshTokenInput, AppleAuthInput, GoogleAuthInput } from '../schemas/auth.schema';
+import type {
+  RegisterInput,
+  LoginInput,
+  RefreshTokenInput,
+  AppleAuthInput,
+  GoogleAuthInput,
+  ForgotPasswordInput,
+  ResetPasswordInput,
+} from '../schemas/auth.schema';
 
 // Apple's public key endpoint for token verification
 const APPLE_JWKS_URL = new URL('https://appleid.apple.com/auth/keys');
@@ -309,6 +319,98 @@ class AuthService {
       },
       tokens,
     };
+  }
+
+  /**
+   * Request password reset - generates token and sends email
+   */
+  async forgotPassword(input: ForgotPasswordInput): Promise<void> {
+    const { email } = input;
+
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      logger.info('Password reset requested for non-existent email', { email });
+      return;
+    }
+
+    // Check if user has a password (not SSO-only account)
+    if (!user.passwordHash) {
+      logger.info('Password reset requested for SSO-only account', { email });
+      return;
+    }
+
+    // Delete any existing reset tokens for this user
+    await prisma.passwordResetToken.deleteMany({
+      where: { userId: user.id },
+    });
+
+    // Generate secure token (32 bytes, URL-safe base64)
+    const token = crypto.randomBytes(32).toString('base64url');
+
+    // Store token with 1 hour expiry
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await prisma.passwordResetToken.create({
+      data: {
+        token,
+        userId: user.id,
+        expiresAt,
+      },
+    });
+
+    // TODO: Send email with reset link
+    // For now, log the token for development
+    logger.info('Password reset token generated', {
+      email,
+      token,
+      expiresAt,
+      resetUrl: `giglet://reset-password?token=${token}`,
+    });
+  }
+
+  /**
+   * Reset password using token
+   */
+  async resetPassword(input: ResetPasswordInput): Promise<void> {
+    const { token, newPassword } = input;
+
+    // Find token
+    const resetToken = await prisma.passwordResetToken.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+
+    if (!resetToken) {
+      throw errors.unauthorized('Invalid or expired reset token');
+    }
+
+    // Check if token is expired
+    if (resetToken.expiresAt < new Date()) {
+      // Delete expired token
+      await prisma.passwordResetToken.delete({ where: { id: resetToken.id } });
+      throw errors.unauthorized('Reset token has expired. Please request a new one.');
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+
+    // Update user password and delete token in transaction
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: resetToken.userId },
+        data: { passwordHash },
+      }),
+      prisma.passwordResetToken.delete({
+        where: { id: resetToken.id },
+      }),
+    ]);
+
+    logger.info('Password reset successful', { userId: resetToken.userId });
   }
 
   /**
