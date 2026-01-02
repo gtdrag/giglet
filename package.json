@@ -35,6 +35,7 @@
   "author": "George",
   "license": "UNLICENSED",
   "overrides": {
+    "react": "19.1.0",
     "react-native-screens": "~4.16.0"
   },
   "devDependencies": {
