@@ -15,6 +15,7 @@ export const config = {
   appleBundleId: process.env.APPLE_BUNDLE_ID || 'app.giglet.driver',
   googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   encryptionKey: process.env.ENCRYPTION_KEY || DEV_ENCRYPTION_KEY,
+  redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
 } as const;
 
 export type Config = typeof config;

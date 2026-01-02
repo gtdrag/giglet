@@ -88,6 +88,26 @@ class PlatformController {
       next(error);
     }
   }
+
+  /**
+   * POST /api/v1/platforms/:platform/sync
+   * Trigger a manual sync for a platform
+   */
+  async sync(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) {
+        throw errors.unauthorized('User not authenticated');
+      }
+
+      const platform = req.params.platform.toUpperCase() as Platform;
+      const result = await platformService.triggerSync(userId, platform);
+
+      res.json(successResponse({ message: 'Sync started', jobId: result.jobId }));
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const platformController = new PlatformController();

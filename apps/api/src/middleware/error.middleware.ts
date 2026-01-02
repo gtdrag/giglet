@@ -19,6 +19,8 @@ export const errors = {
   validation: (message: string, details?: Record<string, unknown>) =>
     new AppError('VALIDATION_ERROR', message, 400, details),
 
+  badRequest: (message: string) => new AppError('BAD_REQUEST', message, 400),
+
   unauthorized: (message = 'Unauthorized') => new AppError('UNAUTHORIZED', message, 401),
 
   forbidden: (message = 'Forbidden') => new AppError('FORBIDDEN', message, 403),

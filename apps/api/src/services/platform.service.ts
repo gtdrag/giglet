@@ -1,6 +1,7 @@
 import { Platform, PlatformStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { encrypt, decrypt } from '../utils/encryption';
+import { enqueuePlatformSync } from '../lib/queue';
 import { errors } from '../middleware/error.middleware';
 import { logger } from '../utils/logger';
 import type { ConnectPlatformInput } from '../schemas/platform.schema';
@@ -69,8 +70,21 @@ class PlatformService {
       accountId: account.id,
     });
 
-    // TODO: Trigger initial sync job here
-    // For now, just return the account
+    // Trigger initial sync job
+    try {
+      await enqueuePlatformSync({
+        platformAccountId: account.id,
+        userId,
+        isInitialSync: true,
+      });
+      logger.info('Initial sync job enqueued', { accountId: account.id });
+    } catch (error) {
+      // Don't fail the connection if queue is unavailable
+      logger.error('Failed to enqueue initial sync', {
+        accountId: account.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     return this.formatAccountResponse(account);
   }
@@ -179,6 +193,46 @@ class PlatformService {
         lastSyncError: error || null,
       },
     });
+  }
+
+  /**
+   * Trigger a manual sync for a platform
+   */
+  async triggerSync(
+    userId: string,
+    platform: Platform
+  ): Promise<{ jobId: string }> {
+    const account = await prisma.platformAccount.findUnique({
+      where: {
+        userId_platform: { userId, platform },
+      },
+    });
+
+    if (!account) {
+      throw errors.notFound(`${platform} account not found`);
+    }
+
+    if (account.status === 'DISCONNECTED') {
+      throw errors.badRequest(`${platform} account is disconnected`);
+    }
+
+    if (account.status === 'SYNCING') {
+      throw errors.badRequest(`${platform} sync already in progress`);
+    }
+
+    const jobId = await enqueuePlatformSync({
+      platformAccountId: account.id,
+      userId,
+      isInitialSync: false,
+    });
+
+    logger.info('Manual sync triggered', {
+      userId,
+      platform,
+      jobId,
+    });
+
+    return { jobId };
   }
 
   private formatAccountResponse(account: {
