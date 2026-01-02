@@ -23,6 +23,7 @@ interface AuthState {
   checkAuthStatus: () => Promise<void>;
   register: (input: authService.RegisterInput) => Promise<void>;
   login: (input: authService.LoginInput) => Promise<void>;
+  appleAuth: (input: authService.AppleAuthInput) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -89,6 +90,26 @@ export const useAuthStore = create<AuthState>((set) => ({
         throw error;
       }
       set({ isLoading: false, error: 'Login failed. Please try again.' });
+      throw error;
+    }
+  },
+
+  appleAuth: async (input) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await authService.appleAuth(input);
+      set({
+        isAuthenticated: true,
+        user: result.user,
+        isLoading: false,
+        error: null,
+      });
+    } catch (error) {
+      if (error instanceof authService.AuthError) {
+        set({ isLoading: false, error: error.message });
+        throw error;
+      }
+      set({ isLoading: false, error: 'Apple Sign In failed. Please try again.' });
       throw error;
     }
   },

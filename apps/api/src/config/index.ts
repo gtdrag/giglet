@@ -9,6 +9,7 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || 'dev-secret-change-in-production',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '15m',
   refreshTokenExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '30d',
+  appleBundleId: process.env.APPLE_BUNDLE_ID || 'app.giglet.driver',
 } as const;
 
 export type Config = typeof config;

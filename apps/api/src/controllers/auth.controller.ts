@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/auth.service';
 import { successResponse } from '../types/api.types';
-import type { RegisterInput, LoginInput, RefreshTokenInput } from '../schemas/auth.schema';
+import type { RegisterInput, LoginInput, RefreshTokenInput, AppleAuthInput } from '../schemas/auth.schema';
 
 class AuthController {
   /**
@@ -76,6 +76,27 @@ class AuthController {
       await authService.logout(refreshToken);
 
       res.json(successResponse({ message: 'Logged out successfully' }));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/v1/auth/apple
+   * Sign in with Apple
+   */
+  async appleAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const input: AppleAuthInput = req.body;
+      const result = await authService.appleAuth(input);
+
+      res.json(
+        successResponse({
+          user: result.user,
+          accessToken: result.tokens.accessToken,
+          refreshToken: result.tokens.refreshToken,
+        })
+      );
     } catch (error) {
       next(error);
     }

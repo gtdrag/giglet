@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,11 +12,55 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuthStore } from '../../src/stores/authStore';
 import { AuthError } from '../../src/services/auth';
 
 export default function LoginScreen() {
-  const { login, isLoading, error } = useAuthStore();
+  const { login, appleAuth, isLoading, error } = useAuthStore();
+  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+
+  // Check if Apple Sign In is available on mount
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable);
+    }
+  }, []);
+
+  const handleAppleSignIn = async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        throw new Error('No identity token received from Apple');
+      }
+
+      await appleAuth({
+        identityToken: credential.identityToken,
+        user: credential.user,
+        email: credential.email || undefined,
+        fullName: credential.fullName
+          ? {
+              givenName: credential.fullName.givenName,
+              familyName: credential.fullName.familyName,
+            }
+          : undefined,
+      });
+
+      router.replace('/(tabs)/zones');
+    } catch (err) {
+      // User cancelled or error - error is set in store
+      if ((err as Error).message?.includes('cancelled')) {
+        // User cancelled, don't show error
+        return;
+      }
+    }
+  };
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -147,6 +191,25 @@ export default function LoginScreen() {
                   <Text style={styles.loginButtonText}>Sign In</Text>
                 )}
               </Pressable>
+
+              {/* Apple Sign In (iOS only) */}
+              {Platform.OS === 'ios' && appleAuthAvailable && (
+                <>
+                  <View style={styles.divider}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>or</Text>
+                    <View style={styles.dividerLine} />
+                  </View>
+
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                    cornerRadius={12}
+                    style={styles.appleButton}
+                    onPress={handleAppleSignIn}
+                  />
+                </>
+              )}
             </View>
 
             <View style={styles.footer}>
@@ -279,5 +342,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#06B6D4',
     fontWeight: '600',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#27272A',
+  },
+  dividerText: {
+    color: '#71717A',
+    paddingHorizontal: 16,
+    fontSize: 14,
+  },
+  appleButton: {
+    width: '100%',
+    height: 50,
   },
 });

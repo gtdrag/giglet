@@ -46,3 +46,20 @@ export const RefreshTokenSchema = z.object({
 });
 
 export type RefreshTokenInput = z.infer<typeof RefreshTokenSchema>;
+
+/**
+ * Apple Sign In request schema
+ */
+export const AppleAuthSchema = z.object({
+  identityToken: z.string({ message: 'Identity token is required' }),
+  user: z.string().optional(), // Apple user identifier (only provided on first sign-in)
+  email: z.string().email().optional(), // Only provided on first sign-in if user allows
+  fullName: z
+    .object({
+      givenName: z.string().nullable().optional(),
+      familyName: z.string().nullable().optional(),
+    })
+    .optional(),
+});
+
+export type AppleAuthInput = z.infer<typeof AppleAuthSchema>;
