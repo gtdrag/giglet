@@ -1770,6 +1770,105 @@ Epic 2 ──► Epic 8 (Subscriptions) ──► Epic 9 (Settings)
 
 ---
 
+## Epic 10: Referral Program (Post-MVP)
+
+**Goal:** Implement a driver-to-driver referral system with incentives to enable grassroots user acquisition.
+
+**Value:** Low-cost user acquisition through word-of-mouth. Each driver becomes a potential ambassador for the app.
+
+**Exit Criteria:**
+- Users have unique referral codes
+- QR codes generated for physical card distribution
+- Referral tracking and attribution works
+- Payout system for successful referrals
+
+**Marketing Context:** Grassroots campaign where existing users (including the founder) hand QR cards to DoorDash drivers at delivery. Drivers who sign up and refer others earn $5 per successful referral.
+
+---
+
+### Story 10.1: Referral Code Generation
+
+**As a** user,
+**I want** a unique referral code and shareable link,
+**So that** I can invite other drivers to Giglet.
+
+**Acceptance Criteria:**
+- Each user has a unique referral code (e.g., "DRIVER-ABC123")
+- Shareable link: giglet.app/r/ABC123
+- QR code generated for the link
+- Code visible in Settings/Profile
+
+**Technical Notes:**
+- Generate code on user creation
+- Store in User model
+- QR code generation (client-side or API)
+
+---
+
+### Story 10.2: Referral Tracking
+
+**As a** system,
+**I want** to track which referrals convert,
+**So that** we can attribute signups and calculate payouts.
+
+**Acceptance Criteria:**
+- New users can enter referral code during signup
+- Referral source tracked on User record
+- Referral counted as "pending" until user completes first sync
+- Referral counted as "converted" after 7 days of active use
+
+**Technical Notes:**
+- Add referredBy field to User model
+- Create Referral table: referrerId, refereeId, status, createdAt, convertedAt
+- Webhook/job to check conversion criteria
+
+---
+
+### Story 10.3: Referral Dashboard
+
+**As a** user,
+**I want** to see my referral stats,
+**So that** I know how many drivers I've referred.
+
+**Acceptance Criteria:**
+- View total referrals (pending, converted)
+- View earnings from referrals
+- See list of referred users (anonymized: "Driver joined Jan 2")
+
+---
+
+### Story 10.4: Referral Payout System
+
+**As a** user with converted referrals,
+**I want** to receive my referral bonus,
+**So that** I'm rewarded for growing the community.
+
+**Acceptance Criteria:**
+- $5 credit per converted referral
+- Credits visible in app
+- Credits can be applied to Pro subscription
+- (Future: Cash payout via Venmo/PayPal)
+
+**Technical Notes:**
+- ReferralCredit model: userId, amount, source, createdAt
+- Apply credits at subscription checkout
+
+---
+
+### Story 10.5: QR Code Card Design Assets
+
+**As a** marketing asset,
+**I want** printable QR code cards,
+**So that** users can hand them to drivers.
+
+**Acceptance Criteria:**
+- Card template design (print-ready PDF)
+- Space for handwritten referral code or pre-printed
+- Clear value proposition and CTA
+- Download available in Settings
+
+---
+
 ## Summary
 
 | Epic | Stories | Priority | Dependencies |
@@ -1783,8 +1882,9 @@ Epic 2 ──► Epic 8 (Subscriptions) ──► Epic 9 (Settings)
 | 7. Tax Export | 5 | P1 | Epic 4, 6, 8 |
 | 8. Subscription & Payments | 6 | P0 | Epic 2 |
 | 9. Settings & Profile | 5 | P1 | Epic 2 |
+| 10. Referral Program | 5 | P2 | Epic 2, 8 |
 
-**Total: 55 stories across 9 epics**
+**Total: 60 stories across 10 epics**
 
 ---
 

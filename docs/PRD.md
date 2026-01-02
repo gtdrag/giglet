@@ -119,6 +119,7 @@ The MVP must deliver complete value for the core use case: a delivery driver who
 
 ### Growth Features (Post-MVP)
 
+- **Referral Program** - Driver-to-driver referrals with incentives ($5 for referrer, $5 for new user). QR code cards for grassroots marketing. Track referral source, conversions, and payouts.
 - Push notifications when zones heat up
 - Predicted busy times (hour-by-hour forecast)
 - Earnings-per-hour analytics
