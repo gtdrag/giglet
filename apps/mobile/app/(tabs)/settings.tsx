@@ -1,5 +1,7 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 
 export default function SettingsScreen() {
   return (
@@ -12,7 +14,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           <SettingsRow label="Profile" />
-          <SettingsRow label="Connected Platforms" />
+          <SettingsRow label="Connected Platforms" onPress={() => router.push('/accounts')} />
           <SettingsRow label="Subscription" badge="Free" />
         </View>
         <View style={styles.section}>
@@ -30,15 +32,26 @@ export default function SettingsScreen() {
   );
 }
 
-function SettingsRow({ label, badge }: { label: string; badge?: string }) {
+function SettingsRow({
+  label,
+  badge,
+  onPress,
+}: {
+  label: string;
+  badge?: string;
+  onPress?: () => void;
+}) {
   return (
-    <Pressable style={styles.row}>
+    <Pressable style={styles.row} onPress={onPress}>
       <Text style={styles.rowLabel}>{label}</Text>
-      {badge && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{badge}</Text>
-        </View>
-      )}
+      <View style={styles.rowRight}>
+        {badge && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{badge}</Text>
+          </View>
+        )}
+        <Ionicons name="chevron-forward" size={18} color="#71717A" />
+      </View>
     </Pressable>
   );
 }
@@ -87,6 +100,11 @@ const styles = StyleSheet.create({
   rowLabel: {
     fontSize: 16,
     color: '#FAFAFA',
+  },
+  rowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   badge: {
     backgroundColor: '#27272A',
