@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { earningsController } from '../controllers/earnings.controller';
 import { requireAuth } from '../middleware/auth.middleware';
+import { validateRequest } from '../middleware/validate.middleware';
+import { GetEarningsSummarySchema, GetDeliveriesSchema } from '../schemas/earnings.schema';
 
 const router = Router();
 
@@ -17,9 +19,17 @@ const router = Router();
 router.use(requireAuth);
 
 // Get earnings summary
-router.get('/summary', (req, res, next) => earningsController.getSummary(req, res, next));
+router.get(
+  '/summary',
+  validateRequest(GetEarningsSummarySchema),
+  earningsController.getSummary.bind(earningsController)
+);
 
 // Get individual deliveries
-router.get('/deliveries', (req, res, next) => earningsController.getDeliveries(req, res, next));
+router.get(
+  '/deliveries',
+  validateRequest(GetDeliveriesSchema),
+  earningsController.getDeliveries.bind(earningsController)
+);
 
 export default router;

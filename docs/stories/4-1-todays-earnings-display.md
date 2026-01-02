@@ -123,8 +123,64 @@ GROUP BY platform
 
 ---
 
+## Code Review
+
+**Reviewer:** Claude (Senior Developer)
+**Date:** 2026-01-02
+**Verdict:** NEEDS REVISION
+
+### Critical Issues
+
+| ID | File | Issue | Severity |
+|----|------|-------|----------|
+| CR-1 | `earnings.controller.ts` | **Zod schemas defined but NOT used** - Controller casts query params directly without validation. Schemas in `earnings.schema.ts` are dead code. | HIGH |
+| CR-2 | `earnings.service.ts:171-180` | **Invalid timezone could crash** - No validation of timezone string before passing to `Intl.DateTimeFormat`. Malformed timezone will throw uncaught exception. | HIGH |
+
+### Medium Issues
+
+| ID | File | Issue | Severity |
+|----|------|-------|----------|
+| CR-3 | `earnings.controller.ts:18,40` | **No period validation** - Controller accepts any string as period, relying on service default. Should validate against enum. | MEDIUM |
+| CR-4 | `earnings.controller.ts:42-43` | **parseInt without radix** - `parseInt(req.query.limit as string)` should specify radix 10. Also NaN not handled. | MEDIUM |
+| CR-5 | Mobile `earnings.ts` | **Duplicate type definitions** - Types duplicated between API and mobile. Should share types via a package or generate from OpenAPI. | MEDIUM |
+
+### Minor Issues
+
+| ID | File | Issue | Severity |
+|----|------|-------|----------|
+| CR-6 | `earningsStore.ts:101-104` | **useEffect missing deps** - In `earnings.tsx`, `useEffect` with empty deps but calls `fetchSummary`/`fetchDeliveries` which aren't stable refs. | LOW |
+| CR-7 | `earnings.service.ts` | **No unit tests** - Service has complex timezone logic with no test coverage. | LOW |
+| CR-8 | `earnings.routes.ts` | **Wrapper functions unnecessary** - `(req, res, next) => controller.method(req, res, next)` can just be `controller.method.bind(controller)` | LOW |
+
+### Required Fixes Before Approval
+
+1. ~~**Apply Zod validation middleware** to routes using the defined schemas~~ ✅ FIXED
+2. ~~**Validate timezone** with try-catch around DateTimeFormat or allowlist~~ ✅ FIXED
+3. ~~**Add radix to parseInt** and handle NaN cases~~ ✅ FIXED (using Zod coerce)
+
+### Recommendations (Non-blocking)
+
+- Add integration tests for earnings endpoints
+- Consider shared type package for API/mobile type sync
+- Add request validation middleware pattern to coding standards
+
+### Fixes Applied
+
+**CR-1 & CR-3 & CR-4 Fix:** Added `validateRequest` middleware to routes:
+- `earnings.routes.ts` now uses `validateRequest(GetEarningsSummarySchema)` and `validateRequest(GetDeliveriesSchema)`
+- Controller simplified to use validated typed params directly
+- No more manual type casting or parseInt
+
+**CR-2 Fix:** Added timezone validation to schema:
+- `TimezoneSchema` uses `refine()` with try-catch around `Intl.DateTimeFormat`
+- Invalid timezones now return 400 with clear error message
+
+---
+
 ## Change Log
 
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-01-02 | Claude | Story created |
+| 2026-01-02 | Claude | Code review completed - needs revision |
+| 2026-01-02 | Claude | All critical issues fixed - approved |

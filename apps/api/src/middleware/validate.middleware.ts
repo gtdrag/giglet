@@ -32,6 +32,45 @@ export function validate<T>(schema: ZodSchema<T>) {
 }
 
 /**
+ * Validation middleware for request with query, body, and params
+ *
+ * Usage:
+ * ```ts
+ * router.get('/summary', validateRequest(GetEarningsSummarySchema), controller.getSummary);
+ * ```
+ *
+ * Schema should have shape: { query?: z.object(), body?: z.object(), params?: z.object() }
+ */
+export function validateRequest<T>(schema: ZodSchema<T>) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      const result = schema.safeParse({
+        query: req.query,
+        body: req.body,
+        params: req.params,
+      });
+
+      if (!result.success) {
+        const formattedErrors = formatZodErrors(result.error);
+        throw new AppError('VALIDATION_ERROR', 'Invalid request data', 400, {
+          errors: formattedErrors,
+        });
+      }
+
+      // Replace with validated data (includes defaults and transformations)
+      const validated = result.data as { query?: unknown; body?: unknown; params?: unknown };
+      if (validated.query) req.query = validated.query as typeof req.query;
+      if (validated.body) req.body = validated.body;
+      if (validated.params) req.params = validated.params as typeof req.params;
+
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+/**
  * Format Zod errors into a user-friendly structure
  */
 function formatZodErrors(error: ZodError): Record<string, string[]> {
