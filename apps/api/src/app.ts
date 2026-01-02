@@ -3,13 +3,17 @@ import cors from 'cors';
 import helmet from 'helmet';
 import routes from './routes';
 import { errorHandler } from './middleware/error.middleware';
+import { requestIdMiddleware } from './middleware/requestId.middleware';
 import { logger } from './utils/logger';
-import prisma from './lib/prisma';
+import { healthController } from './controllers/health.controller';
 
 const app = express();
 
 // Security middleware
 app.use(helmet());
+
+// Request ID for tracing
+app.use(requestIdMiddleware);
 
 // CORS configuration
 app.use(
@@ -30,6 +34,7 @@ app.use(express.urlencoded({ extended: true }));
 if (process.env.NODE_ENV === 'development') {
   app.use((req, _res, next) => {
     logger.debug(`${req.method} ${req.path}`, {
+      requestId: req.requestId,
       query: req.query,
       body: req.body,
     });
@@ -41,16 +46,7 @@ if (process.env.NODE_ENV === 'development') {
 app.use('/api/v1', routes);
 
 // Health check at root (for Railway/infrastructure)
-app.get('/health', async (_req, res) => {
-  try {
-    // Verify database connectivity
-    await prisma.$queryRaw`SELECT 1`;
-    res.json({ status: 'ok', database: 'connected' });
-  } catch (error) {
-    logger.error('Health check failed - database connection error', { error });
-    res.status(500).json({ status: 'error', database: 'disconnected' });
-  }
-});
+app.get('/health', (req, res, next) => healthController.getHealth(req, res, next));
 
 // Error handling (must be last)
 app.use(errorHandler);
