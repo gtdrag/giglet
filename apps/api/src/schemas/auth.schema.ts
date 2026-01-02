@@ -63,3 +63,12 @@ export const AppleAuthSchema = z.object({
 });
 
 export type AppleAuthInput = z.infer<typeof AppleAuthSchema>;
+
+/**
+ * Google Sign In request schema
+ */
+export const GoogleAuthSchema = z.object({
+  idToken: z.string({ message: 'ID token is required' }),
+});
+
+export type GoogleAuthInput = z.infer<typeof GoogleAuthSchema>;

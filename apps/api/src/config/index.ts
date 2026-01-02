@@ -10,6 +10,7 @@ export const config = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '15m',
   refreshTokenExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '30d',
   appleBundleId: process.env.APPLE_BUNDLE_ID || 'app.giglet.driver',
+  googleClientId: process.env.GOOGLE_CLIENT_ID || '',
 } as const;
 
 export type Config = typeof config;

@@ -13,19 +13,47 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { GoogleSignin, GoogleSigninButton, statusCodes } from '@react-native-google-signin/google-signin';
 import { useAuthStore } from '../../src/stores/authStore';
 import { AuthError } from '../../src/services/auth';
 
 export default function LoginScreen() {
-  const { login, appleAuth, isLoading, error } = useAuthStore();
+  const { login, appleAuth, googleAuth, isLoading, error } = useAuthStore();
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
 
-  // Check if Apple Sign In is available on mount
+  // Configure Google Sign In and check Apple availability on mount
   useEffect(() => {
+    // Configure Google Sign In
+    GoogleSignin.configure({
+      // Web client ID for token verification (required for backend verification)
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    });
+
+    // Check Apple Sign In availability (iOS only)
     if (Platform.OS === 'ios') {
       AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable);
     }
   }, []);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+
+      if (response.type === 'success' && response.data.idToken) {
+        await googleAuth({ idToken: response.data.idToken });
+        router.replace('/(tabs)/zones');
+      }
+    } catch (err: unknown) {
+      const error = err as { code?: string };
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // User cancelled, don't show error
+        return;
+      }
+      // Other errors are handled by the store
+    }
+  };
 
   const handleAppleSignIn = async () => {
     try {
@@ -192,8 +220,8 @@ export default function LoginScreen() {
                 )}
               </Pressable>
 
-              {/* Apple Sign In (iOS only) */}
-              {Platform.OS === 'ios' && appleAuthAvailable && (
+              {/* Social Sign In Options */}
+              {(appleAuthAvailable || true) && (
                 <>
                   <View style={styles.divider}>
                     <View style={styles.dividerLine} />
@@ -201,12 +229,24 @@ export default function LoginScreen() {
                     <View style={styles.dividerLine} />
                   </View>
 
-                  <AppleAuthentication.AppleAuthenticationButton
-                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-                    cornerRadius={12}
-                    style={styles.appleButton}
-                    onPress={handleAppleSignIn}
+                  {/* Apple Sign In (iOS only) */}
+                  {Platform.OS === 'ios' && appleAuthAvailable && (
+                    <AppleAuthentication.AppleAuthenticationButton
+                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                      cornerRadius={12}
+                      style={styles.appleButton}
+                      onPress={handleAppleSignIn}
+                    />
+                  )}
+
+                  {/* Google Sign In (iOS and Android) */}
+                  <GoogleSigninButton
+                    style={styles.googleButton}
+                    size={GoogleSigninButton.Size.Wide}
+                    color={GoogleSigninButton.Color.Light}
+                    onPress={handleGoogleSignIn}
+                    disabled={isLoading}
                   />
                 </>
               )}
@@ -359,6 +399,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   appleButton: {
+    width: '100%',
+    height: 50,
+    marginBottom: 12,
+  },
+  googleButton: {
     width: '100%',
     height: 50,
   },

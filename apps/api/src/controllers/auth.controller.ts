@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/auth.service';
 import { successResponse } from '../types/api.types';
-import type { RegisterInput, LoginInput, RefreshTokenInput, AppleAuthInput } from '../schemas/auth.schema';
+import type { RegisterInput, LoginInput, RefreshTokenInput, AppleAuthInput, GoogleAuthInput } from '../schemas/auth.schema';
 
 class AuthController {
   /**
@@ -89,6 +89,27 @@ class AuthController {
     try {
       const input: AppleAuthInput = req.body;
       const result = await authService.appleAuth(input);
+
+      res.json(
+        successResponse({
+          user: result.user,
+          accessToken: result.tokens.accessToken,
+          refreshToken: result.tokens.refreshToken,
+        })
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/v1/auth/google
+   * Sign in with Google
+   */
+  async googleAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const input: GoogleAuthInput = req.body;
+      const result = await authService.googleAuth(input);
 
       res.json(
         successResponse({

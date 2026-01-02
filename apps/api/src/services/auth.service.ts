@@ -1,14 +1,18 @@
 import bcrypt from 'bcryptjs';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../lib/prisma';
 import { config } from '../config';
 import { generateAccessToken, generateRefreshToken, parseExpiry } from '../utils/jwt';
 import { AppError, errors } from '../middleware/error.middleware';
-import type { RegisterInput, LoginInput, RefreshTokenInput, AppleAuthInput } from '../schemas/auth.schema';
+import type { RegisterInput, LoginInput, RefreshTokenInput, AppleAuthInput, GoogleAuthInput } from '../schemas/auth.schema';
 
 // Apple's public key endpoint for token verification
 const APPLE_JWKS_URL = new URL('https://appleid.apple.com/auth/keys');
 const appleJWKS = createRemoteJWKSet(APPLE_JWKS_URL);
+
+// Google OAuth client for token verification
+const googleClient = new OAuth2Client();
 
 const BCRYPT_ROUNDS = 12;
 
@@ -208,6 +212,86 @@ class AuthService {
             email: userEmail,
             appleId: appleUserId,
             authProvider: 'APPLE',
+            name,
+          },
+        });
+      }
+    }
+
+    // Generate tokens
+    const tokens = await this.generateTokensForUser(user);
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      tokens,
+    };
+  }
+
+  /**
+   * Sign in with Google
+   * Verifies Google ID token and creates/finds user
+   */
+  async googleAuth(input: GoogleAuthInput): Promise<AuthResult> {
+    const { idToken } = input;
+
+    // Verify Google ID token
+    let googleUserId: string;
+    let email: string;
+    let name: string | undefined;
+
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken,
+        audience: config.googleClientId || undefined,
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload) {
+        throw new Error('No payload in token');
+      }
+
+      googleUserId = payload.sub;
+      email = payload.email as string;
+      name = payload.name;
+
+      if (!email) {
+        throw new Error('No email in token');
+      }
+    } catch (error) {
+      throw errors.unauthorized('Invalid Google ID token');
+    }
+
+    // Check if user already exists with this Google ID
+    let user = await prisma.user.findUnique({
+      where: { googleId: googleUserId },
+    });
+
+    if (!user) {
+      // Check if email is already used by another account
+      const existingUser = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (existingUser) {
+        // Link Google ID to existing account
+        user = await prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            googleId: googleUserId,
+            authProvider: 'GOOGLE',
+          },
+        });
+      } else {
+        // Create new user
+        user = await prisma.user.create({
+          data: {
+            email,
+            googleId: googleUserId,
+            authProvider: 'GOOGLE',
             name,
           },
         });
