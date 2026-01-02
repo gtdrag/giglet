@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useEarningsStore } from '../../src/stores/earningsStore';
+import { PlatformBreakdownChart } from '../../src/components/PlatformBreakdownChart';
 import type { EarningsPeriod, Delivery } from '../../src/services/earnings';
 
 const PERIOD_OPTIONS: { label: string; value: EarningsPeriod }[] = [
@@ -194,24 +195,16 @@ export default function EarningsScreen() {
         )}
       </View>
 
-      {/* Platform Breakdown */}
-      {summary && summary.platformBreakdown.length > 0 && (
+      {/* Platform Breakdown Chart */}
+      {summary && (
         <View style={styles.breakdownSection}>
           <Text style={styles.sectionTitle}>By Platform</Text>
-          {summary.platformBreakdown.map((platform) => (
-            <View key={platform.platform} style={styles.breakdownItem}>
-              <View style={styles.breakdownLeft}>
-                <View style={[styles.platformDot, { backgroundColor: getPlatformColor(platform.platform) }]} />
-                <Text style={styles.breakdownPlatform}>
-                  {platform.platform === 'DOORDASH' ? 'DoorDash' : 'Uber Eats'}
-                </Text>
-              </View>
-              <View style={styles.breakdownRight}>
-                <Text style={styles.breakdownAmount}>{formatCurrency(platform.total)}</Text>
-                <Text style={styles.breakdownCount}>{platform.deliveryCount} deliveries</Text>
-              </View>
-            </View>
-          ))}
+          <View style={styles.chartCard}>
+            <PlatformBreakdownChart
+              breakdown={summary.platformBreakdown}
+              total={summary.total}
+            />
+          </View>
         </View>
       )}
 
@@ -365,44 +358,12 @@ const styles = StyleSheet.create({
     color: '#FAFAFA',
     marginBottom: 12,
   },
-  breakdownItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  chartCard: {
     backgroundColor: '#18181B',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    borderRadius: 16,
+    padding: 20,
     borderWidth: 1,
     borderColor: '#27272A',
-  },
-  breakdownLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  platformDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 12,
-  },
-  breakdownPlatform: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#FAFAFA',
-  },
-  breakdownRight: {
-    alignItems: 'flex-end',
-  },
-  breakdownAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#22C55E',
-  },
-  breakdownCount: {
-    fontSize: 12,
-    color: '#71717A',
-    marginTop: 2,
   },
   deliveriesHeader: {
     flexDirection: 'row',
