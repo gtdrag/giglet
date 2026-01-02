@@ -46,6 +46,14 @@ export const GetZonesSchema = z.object({
 
 export const GetZoneScoreSchema = z.object({
   query: z.object({
+    lat: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseAndValidateFloat(val, -90, 90, 'lat') : undefined)),
+    lng: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseAndValidateFloat(val, -180, 180, 'lng') : undefined)),
     timezone: z
       .string()
       .optional()

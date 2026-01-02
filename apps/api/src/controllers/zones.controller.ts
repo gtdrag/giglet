@@ -41,11 +41,35 @@ class ZonesController {
 
   /**
    * GET /api/v1/zones/score
-   * Get current score calculation (no location needed)
+   * Get current score calculation
+   * If lat/lng provided, includes weather and event boosts
    */
   async getCurrentScore(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { timezone } = req.query as unknown as GetZoneScoreQuery;
+      const { lat, lng, timezone } = req.query as unknown as GetZoneScoreQuery;
+
+      // If lat/lng provided, use full calculation with weather and events
+      if (lat !== undefined && lng !== undefined) {
+        const { score, factors, weatherDescription, nearbyEvents } =
+          await zonesService.calculateScoreWithWeather(lat, lng, new Date(), timezone);
+
+        res.json({
+          success: true,
+          data: {
+            score,
+            label: zonesService.getScoreLabel(score),
+            factors,
+            weatherDescription,
+            nearbyEvents,
+            calculatedAt: new Date().toISOString(),
+            timezone,
+            nextRefresh: this.getNextRefreshTime(),
+          },
+        });
+        return;
+      }
+
+      // Otherwise, use basic calculation (no external APIs)
       const { score, factors } = zonesService.calculateScore(new Date(), timezone);
 
       res.json({

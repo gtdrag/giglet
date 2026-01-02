@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { toZonedTime } from 'date-fns-tz';
 import { weatherService } from './weather.service';
+import { eventsService } from './events.service';
 
 interface ZoneWithScore {
   id: string;
@@ -16,7 +17,14 @@ interface ZoneScoreFactors {
   peakHourBoost: number;
   weekendBoost: number;
   weatherBoost: number;
+  eventBoost: number;
   baseScore: number;
+}
+
+interface NearbyEvent {
+  name: string;
+  venue: string;
+  startsIn: string;
 }
 
 // Meal window definitions per architecture spec
@@ -43,11 +51,13 @@ class ZonesService {
    * @param timestamp - The time to calculate score for (defaults to now)
    * @param timezone - IANA timezone string (defaults to UTC)
    * @param weatherBoost - Weather score (0-100), defaults to 20 (neutral)
+   * @param eventBoost - Event score (0-100), defaults to 20 (no events)
    */
   calculateScore(
     timestamp: Date = new Date(),
     timezone: string = 'UTC',
-    weatherBoost: number = 20
+    weatherBoost: number = 20,
+    eventBoost: number = 20
   ): { score: number; factors: ZoneScoreFactors } {
     // Convert to user's timezone
     const localTime = this.getLocalTime(timestamp, timezone);
@@ -55,13 +65,16 @@ class ZonesService {
     const dayOfWeek = localTime.getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // Sunday or Saturday
 
-    // Factor weights (Story 5.4: Added weather factor)
+    // Factor weights (Story 5.5: Added event factor)
+    // Weights based on PRD: restaurant density 0.25, ratings 0.10, meal time 0.20,
+    // weather 0.20, event 0.15, traffic 0.10
     const WEIGHTS = {
-      mealTime: 0.25,
-      peakHour: 0.25,
-      weekend: 0.15,
-      weather: 0.15,
-      base: 0.20,
+      mealTime: 0.20,
+      peakHour: 0.20,
+      weekend: 0.10,
+      weather: 0.20,
+      event: 0.15,
+      base: 0.15,
     };
 
     // Calculate individual factors (0-100 scale)
@@ -70,6 +83,7 @@ class ZonesService {
       peakHourBoost: this.getPeakHourScore(hour),
       weekendBoost: this.getWeekendScore(dayOfWeek),
       weatherBoost: weatherBoost,
+      eventBoost: eventBoost,
       baseScore: 50, // Default activity level
     };
 
@@ -79,6 +93,7 @@ class ZonesService {
       factors.peakHourBoost * WEIGHTS.peakHour +
       factors.weekendBoost * WEIGHTS.weekend +
       factors.weatherBoost * WEIGHTS.weather +
+      factors.eventBoost * WEIGHTS.event +
       factors.baseScore * WEIGHTS.base;
 
     return {
@@ -88,10 +103,10 @@ class ZonesService {
   }
 
   /**
-   * Calculate zone score including weather data
-   * Async version that fetches weather from API
-   * @param lat - Latitude for weather lookup
-   * @param lng - Longitude for weather lookup
+   * Calculate zone score including weather and event data
+   * Async version that fetches weather and events from APIs
+   * @param lat - Latitude for weather/event lookup
+   * @param lng - Longitude for weather/event lookup
    * @param timestamp - The time to calculate score for (defaults to now)
    * @param timezone - IANA timezone string (defaults to UTC)
    */
@@ -100,16 +115,29 @@ class ZonesService {
     lng: number,
     timestamp: Date = new Date(),
     timezone: string = 'UTC'
-  ): Promise<{ score: number; factors: ZoneScoreFactors; weatherDescription: string }> {
-    // Fetch weather score (returns 20 on failure - neutral)
-    const { score: weatherBoost, description: weatherDescription } =
-      await weatherService.getWeatherScore(lat, lng);
+  ): Promise<{
+    score: number;
+    factors: ZoneScoreFactors;
+    weatherDescription: string;
+    nearbyEvents: NearbyEvent[];
+  }> {
+    // Fetch weather and event scores in parallel (returns 20 on failure - neutral)
+    const [weatherResult, eventResult] = await Promise.all([
+      weatherService.getWeatherScore(lat, lng),
+      eventsService.getEventScore(lat, lng, timestamp),
+    ]);
 
-    const result = this.calculateScore(timestamp, timezone, weatherBoost);
+    const result = this.calculateScore(
+      timestamp,
+      timezone,
+      weatherResult.score,
+      eventResult.score
+    );
 
     return {
       ...result,
-      weatherDescription,
+      weatherDescription: weatherResult.description,
+      nearbyEvents: eventResult.nearbyEvents,
     };
   }
 
