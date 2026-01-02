@@ -2,8 +2,9 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'ax
 import * as SecureStore from 'expo-secure-store';
 
 // API base URL - should come from environment in production
+// Use machine IP for simulator/emulator connectivity
 const API_BASE_URL = __DEV__
-  ? 'http://localhost:3001/api/v1'
+  ? 'http://10.0.0.133:3001/api/v1'
   : 'https://api.giglet.app/api/v1';
 
 // Token storage keys

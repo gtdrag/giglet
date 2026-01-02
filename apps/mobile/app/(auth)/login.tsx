@@ -21,7 +21,7 @@ import { AuthError, forgotPassword } from '../../src/services/auth';
 import { hasCompletedOnboarding } from '../../src/utils/onboarding';
 
 export default function LoginScreen() {
-  const { login, appleAuth, googleAuth, isLoading, error } = useAuthStore();
+  const { login, appleAuth, googleAuth, isLoading, error, clearError } = useAuthStore();
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
 
   // Navigate based on onboarding status
@@ -228,6 +228,7 @@ export default function LoginScreen() {
                   onChangeText={(text) => {
                     setEmail(text);
                     setFieldErrors((prev) => ({ ...prev, email: '' }));
+                    if (error) clearError();
                   }}
                   placeholder="you@example.com"
                   placeholderTextColor="#71717A"
@@ -250,6 +251,7 @@ export default function LoginScreen() {
                     onChangeText={(text) => {
                       setPassword(text);
                       setFieldErrors((prev) => ({ ...prev, password: '' }));
+                      if (error) clearError();
                     }}
                     placeholder="Enter your password"
                     placeholderTextColor="#71717A"

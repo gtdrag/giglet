@@ -20,6 +20,7 @@ interface AuthState {
   logout: () => Promise<void>;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  clearError: () => void;
   checkAuthStatus: () => Promise<void>;
   register: (input: authService.RegisterInput) => Promise<void>;
   login: (input: authService.LoginInput) => Promise<void>;
@@ -45,6 +46,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   setLoading: (loading) => set({ isLoading: loading }),
 
   setError: (error) => set({ error }),
+
+  clearError: () => set({ error: null }),
 
   checkAuthStatus: async () => {
     try {
