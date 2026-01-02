@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { healthController } from '../controllers/health.controller';
 import authRoutes from './auth.routes';
 import platformRoutes from './platform.routes';
+import earningsRoutes from './earnings.routes';
 
 const router = Router();
 
@@ -35,8 +36,10 @@ router.use('/auth', authRoutes);
 // Platform routes (Epic 3)
 router.use('/platforms', platformRoutes);
 
+// Earnings routes (Epic 4)
+router.use('/earnings', earningsRoutes);
+
 // Future route modules will be added here:
-// router.use('/earnings', earningsRoutes);
 // router.use('/zones', zonesRoutes);
 // router.use('/mileage', mileageRoutes);
 // router.use('/exports', exportRoutes);
