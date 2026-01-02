@@ -1,62 +1,82 @@
-import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import MapPage from './index';
+import DashboardPage from './dashboard';
 
-export default function TabLayout() {
+type Page = 'map' | 'dashboard';
+
+export default function MainLayout() {
+  const [currentPage, setCurrentPage] = useState<Page>('map');
+
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: '#18181B',
-          borderTopColor: '#27272A',
-          height: 84,
-          paddingBottom: 24,
-          paddingTop: 12,
-        },
-        tabBarActiveTintColor: '#10b981', // emerald-500
-        tabBarInactiveTintColor: '#71717A',
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="zones"
-        options={{
-          title: 'Zones',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="map" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="earnings"
-        options={{
-          title: 'Earnings',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="wallet" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="mileage"
-        options={{
-          title: 'Mileage',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="car" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings" size={size} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+    <View style={styles.container}>
+      {/* Page content */}
+      <View style={styles.content}>
+        {currentPage === 'map' ? <MapPage /> : <DashboardPage />}
+      </View>
+
+      {/* Segmented control at bottom */}
+      <SafeAreaView edges={['bottom']} style={styles.footerContainer}>
+        <View style={styles.segmentedControl}>
+          <Pressable
+            style={[styles.segment, currentPage === 'map' && styles.segmentActive]}
+            onPress={() => setCurrentPage('map')}
+          >
+            <Text style={[styles.segmentText, currentPage === 'map' && styles.segmentTextActive]}>
+              Map
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.segment, currentPage === 'dashboard' && styles.segmentActive]}
+            onPress={() => setCurrentPage('dashboard')}
+          >
+            <Text style={[styles.segmentText, currentPage === 'dashboard' && styles.segmentTextActive]}>
+              Dashboard
+            </Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#09090B',
+  },
+  content: {
+    flex: 1,
+  },
+  footerContainer: {
+    backgroundColor: '#09090B',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#27272A',
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    backgroundColor: '#18181B',
+    borderRadius: 10,
+    padding: 4,
+  },
+  segment: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  segmentActive: {
+    backgroundColor: '#27272A',
+  },
+  segmentText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#71717A',
+  },
+  segmentTextActive: {
+    color: '#FAFAFA',
+  },
+});

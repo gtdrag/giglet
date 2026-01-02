@@ -68,7 +68,7 @@ export default function OnboardingScreen() {
 
   const handleSkip = async () => {
     await setOnboardingComplete();
-    router.replace('/(tabs)/zones');
+    router.replace('/(tabs)');
   };
 
   const handleNext = () => {
@@ -81,7 +81,7 @@ export default function OnboardingScreen() {
 
   const handleGetStarted = async () => {
     await setOnboardingComplete();
-    router.replace('/(tabs)/zones');
+    router.replace('/(tabs)');
   };
 
   const renderSlide = ({ item }: { item: OnboardingSlide }) => (

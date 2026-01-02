@@ -19,7 +19,7 @@ const DEFAULT_LOCATION: LocationState = {
   longitudeDelta: 0.0421,
 };
 
-export default function ZonesScreen() {
+export default function MapPage() {
   const [location, setLocation] = useState<LocationState | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,7 +89,7 @@ export default function ZonesScreen() {
           <Text style={styles.subtitle}>Find the best areas to earn</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#10b981" />
+          <ActivityIndicator size="large" color="#06B6D4" />
           <Text style={styles.loadingText}>Getting your location...</Text>
         </View>
       </SafeAreaView>

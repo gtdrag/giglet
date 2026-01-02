@@ -31,7 +31,7 @@ export default function Index() {
   // Redirect based on auth state and onboarding status
   if (isAuthenticated) {
     if (onboardingComplete) {
-      return <Redirect href="/(tabs)/zones" />;
+      return <Redirect href="/(tabs)" />;
     }
     return <Redirect href="/(auth)/onboarding" />;
   }

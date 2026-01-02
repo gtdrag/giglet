@@ -33,7 +33,7 @@ export default function LoginScreen() {
     // For returning users, check if they've completed onboarding
     const completed = await hasCompletedOnboarding();
     if (completed) {
-      router.replace('/(tabs)/zones');
+      router.replace('/(tabs)');
     } else {
       router.replace('/(auth)/onboarding');
     }
