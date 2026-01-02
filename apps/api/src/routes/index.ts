@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { healthController } from '../controllers/health.controller';
+import authRoutes from './auth.routes';
 
 const router = Router();
 
@@ -27,8 +28,10 @@ router.get('/', (req, res) => healthController.getApiInfo(req, res));
 // Health check endpoint (under /api/v1)
 router.get('/health', (req, res, next) => healthController.getHealth(req, res, next));
 
+// Auth routes (Epic 2)
+router.use('/auth', authRoutes);
+
 // Future route modules will be added here:
-// router.use('/auth', authRoutes);
 // router.use('/accounts', accountRoutes);
 // router.use('/earnings', earningsRoutes);
 // router.use('/zones', zonesRoutes);
