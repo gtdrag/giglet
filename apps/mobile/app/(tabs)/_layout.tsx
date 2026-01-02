@@ -1,16 +1,5 @@
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
-
-// Simple icon placeholders - will be replaced with actual icons
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  return (
-    <View style={styles.iconContainer}>
-      <Text style={[styles.iconText, focused && styles.iconTextFocused]}>
-        {name[0].toUpperCase()}
-      </Text>
-    </View>
-  );
-}
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   return (
@@ -24,7 +13,7 @@ export default function TabLayout() {
           paddingBottom: 24,
           paddingTop: 12,
         },
-        tabBarActiveTintColor: '#06B6D4',
+        tabBarActiveTintColor: '#10b981', // emerald-500
         tabBarInactiveTintColor: '#71717A',
         tabBarLabelStyle: {
           fontSize: 12,
@@ -36,48 +25,38 @@ export default function TabLayout() {
         name="zones"
         options={{
           title: 'Zones',
-          tabBarIcon: ({ focused }) => <TabIcon name="Zones" focused={focused} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="map" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="earnings"
         options={{
           title: 'Earnings',
-          tabBarIcon: ({ focused }) => <TabIcon name="Earnings" focused={focused} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="wallet" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="mileage"
         options={{
           title: 'Mileage',
-          tabBarIcon: ({ focused }) => <TabIcon name="Mileage" focused={focused} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="car" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ focused }) => <TabIcon name="Settings" focused={focused} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  iconContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#71717A',
-  },
-  iconTextFocused: {
-    color: '#06B6D4',
-  },
-});

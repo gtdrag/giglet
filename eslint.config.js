@@ -50,6 +50,11 @@ export default [
         __filename: 'readonly',
         module: 'readonly',
         require: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearTimeout: 'readonly',
+        clearInterval: 'readonly',
+        Buffer: 'readonly',
       },
     },
   },
@@ -57,6 +62,17 @@ export default [
   // React/React Native files
   {
     files: ['apps/mobile/**/*.tsx', 'apps/mobile/**/*.ts'],
+    languageOptions: {
+      globals: {
+        global: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearTimeout: 'readonly',
+        clearInterval: 'readonly',
+        console: 'readonly',
+        __DEV__: 'readonly',
+      },
+    },
     plugins: {
       react: reactPlugin,
       'react-hooks': reactHooksPlugin,
