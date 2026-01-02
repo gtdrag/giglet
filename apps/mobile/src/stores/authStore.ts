@@ -16,12 +16,13 @@ interface AuthState {
 
   // Actions
   setAuthenticated: (auth: boolean) => void;
-  login: (user: User) => void;
+  setUser: (user: User) => void;
   logout: () => Promise<void>;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   checkAuthStatus: () => Promise<void>;
   register: (input: authService.RegisterInput) => Promise<void>;
+  login: (input: authService.LoginInput) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -32,7 +33,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setAuthenticated: (auth) => set({ isAuthenticated: auth }),
 
-  login: (user) => set({ isAuthenticated: true, user, isLoading: false, error: null }),
+  setUser: (user) => set({ isAuthenticated: true, user, isLoading: false, error: null }),
 
   logout: async () => {
     await logoutService();
@@ -68,6 +69,26 @@ export const useAuthStore = create<AuthState>((set) => ({
         throw error;
       }
       set({ isLoading: false, error: 'Registration failed. Please try again.' });
+      throw error;
+    }
+  },
+
+  login: async (input) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await authService.login(input);
+      set({
+        isAuthenticated: true,
+        user: result.user,
+        isLoading: false,
+        error: null,
+      });
+    } catch (error) {
+      if (error instanceof authService.AuthError) {
+        set({ isLoading: false, error: error.message });
+        throw error;
+      }
+      set({ isLoading: false, error: 'Login failed. Please try again.' });
       throw error;
     }
   },

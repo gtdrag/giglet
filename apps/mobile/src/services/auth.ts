@@ -25,12 +25,39 @@ export interface RegisterInput {
   name?: string;
 }
 
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
 /**
  * Register a new user
  */
 export async function register(input: RegisterInput): Promise<AuthResponse> {
   try {
     const response = await api.post<{ success: true; data: AuthResponse }>('/auth/register', input);
+
+    const { accessToken, refreshToken, user } = response.data.data;
+
+    // Store tokens securely
+    await storeTokens(accessToken, refreshToken);
+
+    return { user, accessToken, refreshToken };
+  } catch (error) {
+    if (error instanceof AxiosError && error.response?.data) {
+      const apiError = error.response.data.error as ApiError;
+      throw new AuthError(apiError.code, apiError.message, apiError.details);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Login with email and password
+ */
+export async function login(input: LoginInput): Promise<AuthResponse> {
+  try {
+    const response = await api.post<{ success: true; data: AuthResponse }>('/auth/login', input);
 
     const { accessToken, refreshToken, user } = response.data.data;
 
