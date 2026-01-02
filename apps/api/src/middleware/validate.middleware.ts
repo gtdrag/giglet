@@ -58,10 +58,11 @@ export function validateRequest<T>(schema: ZodSchema<T>) {
       }
 
       // Replace with validated data (includes defaults and transformations)
+      // Note: req.query and req.params are getter-only in Express, so we use Object.assign
       const validated = result.data as { query?: unknown; body?: unknown; params?: unknown };
-      if (validated.query) req.query = validated.query as typeof req.query;
+      if (validated.query) Object.assign(req.query, validated.query);
       if (validated.body) req.body = validated.body;
-      if (validated.params) req.params = validated.params as typeof req.params;
+      if (validated.params) Object.assign(req.params, validated.params);
 
       next();
     } catch (error) {
