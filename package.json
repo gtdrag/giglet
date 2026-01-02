@@ -8,20 +8,35 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "npm run dev:api",
     "dev:api": "npm run dev --workspace=apps/api",
     "dev:mobile": "npm run start --workspace=apps/mobile",
+    "dev:mobile:ios": "npm run ios --workspace=apps/mobile",
+    "dev:mobile:android": "npm run android --workspace=apps/mobile",
     "build:api": "npm run build --workspace=apps/api",
     "lint": "eslint apps --ext .ts,.tsx",
     "lint:fix": "eslint apps --ext .ts,.tsx --fix",
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json}\"",
     "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,json}\"",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:start": "docker compose up -d",
+    "db:stop": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d",
+    "db:logs": "docker compose logs -f",
+    "db:migrate": "npm run migrate --workspace=apps/api",
+    "db:push": "npm run db:push --workspace=apps/api",
+    "db:studio": "npm run db:studio --workspace=apps/api",
+    "setup": "npm install && npm run db:start && sleep 3 && npm run db:push && npm run typecheck",
+    "clean": "rm -rf node_modules apps/*/node_modules apps/*/.expo apps/*/dist"
   },
   "engines": {
     "node": ">=22.0.0"
   },
   "author": "George",
   "license": "UNLICENSED",
+  "overrides": {
+    "react-native-screens": "~4.16.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@typescript-eslint/eslint-plugin": "^8.51.0",
