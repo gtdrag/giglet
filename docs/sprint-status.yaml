@@ -95,7 +95,7 @@ development_status:
   5-6-zone-tap-detail-view: done
   5-7-best-zone-recommendation-banner: done
   5-8-zone-score-refresh-and-real-time-updates: done
-  epic-5-retrospective: optional
+  epic-5-retrospective: completed
 
   # ============================================
   # Epic 6: Automatic Mileage Tracking (7 stories)
