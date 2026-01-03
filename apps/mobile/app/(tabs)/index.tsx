@@ -5,7 +5,8 @@ import MapView, { PROVIDER_GOOGLE, Region, Circle, MapPressEvent } from 'react-n
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { ZoneDetailModal } from '../../src/components/ZoneDetailModal';
-import { getNearbyZones, getZoneScore, getScoreColor, getScoreOpacity, ZoneScoreResponse, NearbyZone } from '../../src/services/zones';
+import { RecommendationBanner } from '../../src/components/RecommendationBanner';
+import { getNearbyZones, getScoreColor, getScoreOpacity, ZoneScoreResponse, NearbyZone } from '../../src/services/zones';
 
 interface LocationState {
   latitude: number;
@@ -142,22 +143,23 @@ export default function MapPage() {
     }
   };
 
-  const handleZoneTap = useCallback(async (zone: NearbyZone) => {
+  const handleZoneTap = useCallback((zone: NearbyZone) => {
     setModalVisible(true);
-    setModalLoading(true);
-    setSelectedZoneData(null);
+    setModalLoading(false);
     setSelectedZoneCoords({ lat: zone.latitude, lng: zone.longitude });
 
-    try {
-      const data = await getZoneScore(zone.latitude, zone.longitude);
-      setSelectedZoneData(data);
-    } catch (error) {
-      console.error('Failed to fetch zone score:', error);
-      // Show error state in modal
-      setSelectedZoneData(null);
-    } finally {
-      setModalLoading(false);
-    }
+    // Use the zone data we already have - no need to fetch again
+    // This ensures banner score matches modal score
+    setSelectedZoneData({
+      score: zone.score,
+      label: zone.label,
+      factors: zone.factors,
+      weatherDescription: zone.weatherDescription,
+      nearbyEvents: zone.nearbyEvents,
+      calculatedAt: new Date().toISOString(),
+      timezone: 'local',
+      nextRefresh: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    });
   }, []);
 
   const closeModal = useCallback(() => {
@@ -165,6 +167,20 @@ export default function MapPage() {
     setSelectedZoneData(null);
     setSelectedZoneCoords(null);
   }, []);
+
+  const handleBannerPress = useCallback((zone: NearbyZone) => {
+    // Center the map on the recommended zone
+    const newRegion: Region = {
+      latitude: zone.latitude,
+      longitude: zone.longitude,
+      latitudeDelta: 0.05,
+      longitudeDelta: 0.05,
+    };
+    mapRef.current?.animateToRegion(newRegion, 500);
+
+    // Also open the zone detail modal
+    handleZoneTap(zone);
+  }, [handleZoneTap]);
 
   const handleMapPress = useCallback((event: MapPressEvent) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
@@ -213,6 +229,16 @@ export default function MapPage() {
           <Ionicons name="warning" size={16} color="#FBBF24" />
           <Text style={styles.errorText}>{errorMsg}</Text>
         </View>
+      )}
+
+      {/* Recommendation Banner */}
+      {location && zones.length > 0 && !isAnalyzing && (
+        <RecommendationBanner
+          zones={zones}
+          userLat={location.latitude}
+          userLng={location.longitude}
+          onPress={handleBannerPress}
+        />
       )}
 
       <View style={styles.mapContainer}>
