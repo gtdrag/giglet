@@ -75,7 +75,8 @@ async function isLandCoordinate(lat: number, lng: number): Promise<boolean> {
     }
     return false;
   } catch {
-    return false;
+    // Default to showing zone if geocoding fails (rate limit, network error, etc)
+    return true;
   }
 }
 
