@@ -1,15 +1,25 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, Region, Circle, MapPressEvent } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+import { ZoneDetailModal } from '../../src/components/ZoneDetailModal';
+import { getZoneScore, getScoreColor, getScoreOpacity, ZoneScoreResponse } from '../../src/services/zones';
 
 interface LocationState {
   latitude: number;
   longitude: number;
   latitudeDelta: number;
   longitudeDelta: number;
+}
+
+interface ZoneCircle {
+  id: string;
+  latitude: number;
+  longitude: number;
+  score: number;
+  label: string;
 }
 
 const DEFAULT_LOCATION: LocationState = {
@@ -19,11 +29,61 @@ const DEFAULT_LOCATION: LocationState = {
   longitudeDelta: 0.0421,
 };
 
+const ZONE_RADIUS_METERS = 600;
+
+// Calculate distance between two coordinates in meters (Haversine formula)
+function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Generate sample zones around a location
+function generateSampleZones(lat: number, lng: number): ZoneCircle[] {
+  const zones: ZoneCircle[] = [];
+  const gridSize = 2;
+  const stepDegrees = 0.015; // ~1.5km
+
+  for (let i = -gridSize; i <= gridSize; i++) {
+    for (let j = -gridSize; j <= gridSize; j++) {
+      const zoneLat = lat + i * stepDegrees;
+      const zoneLng = lng + j * stepDegrees;
+      // Vary scores based on position (center is hotter)
+      const distFromCenter = Math.sqrt(i * i + j * j);
+      const baseScore = Math.max(20, 85 - distFromCenter * 15);
+      const variation = Math.floor(Math.random() * 20) - 10;
+      const score = Math.max(0, Math.min(100, baseScore + variation));
+
+      zones.push({
+        id: `zone_${i}_${j}`,
+        latitude: zoneLat,
+        longitude: zoneLng,
+        score,
+        label: score >= 80 ? 'Hot' : score >= 60 ? 'Busy' : score >= 40 ? 'Moderate' : score >= 20 ? 'Slow' : 'Dead',
+      });
+    }
+  }
+
+  return zones;
+}
+
 export default function MapPage() {
   const [location, setLocation] = useState<LocationState | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [zones, setZones] = useState<ZoneCircle[]>([]);
   const mapRef = useRef<MapView>(null);
+
+  // Modal state
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [selectedZoneData, setSelectedZoneData] = useState<ZoneScoreResponse | null>(null);
 
   useEffect(() => {
     requestLocationPermission();
@@ -39,6 +99,7 @@ export default function MapPage() {
       if (status !== 'granted') {
         setErrorMsg('Location permission denied. Enable location to see Focus Zones near you.');
         setLocation(DEFAULT_LOCATION);
+        setZones(generateSampleZones(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude));
         setIsLoading(false);
         return;
       }
@@ -47,15 +108,19 @@ export default function MapPage() {
         accuracy: Location.Accuracy.Balanced,
       });
 
-      setLocation({
+      const newLocation = {
         latitude: currentLocation.coords.latitude,
         longitude: currentLocation.coords.longitude,
         latitudeDelta: 0.0922,
         longitudeDelta: 0.0421,
-      });
+      };
+
+      setLocation(newLocation);
+      setZones(generateSampleZones(newLocation.latitude, newLocation.longitude));
     } catch (error) {
       setErrorMsg('Unable to get location. Please try again.');
       setLocation(DEFAULT_LOCATION);
+      setZones(generateSampleZones(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude));
     } finally {
       setIsLoading(false);
     }
@@ -81,6 +146,48 @@ export default function MapPage() {
     }
   };
 
+  const handleZoneTap = useCallback(async (zone: ZoneCircle) => {
+    setModalVisible(true);
+    setModalLoading(true);
+    setSelectedZoneData(null);
+
+    try {
+      const data = await getZoneScore(zone.latitude, zone.longitude);
+      setSelectedZoneData(data);
+    } catch (error) {
+      console.error('Failed to fetch zone score:', error);
+      // Show error state in modal
+      setSelectedZoneData(null);
+    } finally {
+      setModalLoading(false);
+    }
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModalVisible(false);
+    setSelectedZoneData(null);
+  }, []);
+
+  const handleMapPress = useCallback((event: MapPressEvent) => {
+    const { latitude, longitude } = event.nativeEvent.coordinate;
+
+    // Find the closest zone within tap radius
+    let closestZone: ZoneCircle | null = null;
+    let closestDistance = Infinity;
+
+    for (const zone of zones) {
+      const distance = getDistanceMeters(latitude, longitude, zone.latitude, zone.longitude);
+      if (distance <= ZONE_RADIUS_METERS && distance < closestDistance) {
+        closestDistance = distance;
+        closestZone = zone;
+      }
+    }
+
+    if (closestZone) {
+      handleZoneTap(closestZone);
+    }
+  }, [zones, handleZoneTap]);
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -100,7 +207,7 @@ export default function MapPage() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Focus Zones</Text>
-        <Text style={styles.subtitle}>Find the best areas to earn</Text>
+        <Text style={styles.subtitle}>Tap a zone to see details</Text>
       </View>
 
       {errorMsg && (
@@ -121,19 +228,55 @@ export default function MapPage() {
             showsMyLocationButton={false}
             showsCompass
             customMapStyle={darkMapStyle}
-          />
+            onPress={handleMapPress}
+          >
+            {/* Zone circles */}
+            {zones.map((zone) => (
+              <Circle
+                key={`circle-${zone.id}`}
+                center={{ latitude: zone.latitude, longitude: zone.longitude }}
+                radius={600} // 600 meters
+                fillColor={getScoreColor(zone.score) + Math.round(getScoreOpacity(zone.score) * 255).toString(16).padStart(2, '0')}
+                strokeColor={getScoreColor(zone.score)}
+                strokeWidth={2}
+              />
+            ))}
+          </MapView>
         )}
+
+        {/* Legend */}
+        <View style={styles.legend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#22C55E' }]} />
+            <Text style={styles.legendText}>Hot</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#EAB308' }]} />
+            <Text style={styles.legendText}>Busy</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#F97316' }]} />
+            <Text style={styles.legendText}>Moderate</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+            <Text style={styles.legendText}>Slow</Text>
+          </View>
+        </View>
 
         {/* Center on user button */}
         <TouchableOpacity style={styles.centerButton} onPress={centerOnUser}>
           <Ionicons name="locate" size={24} color="#FAFAFA" />
         </TouchableOpacity>
-
-        {/* Coming soon overlay for zones */}
-        <View style={styles.comingSoonBadge}>
-          <Text style={styles.comingSoonText}>Zone data coming soon</Text>
-        </View>
       </View>
+
+      {/* Zone Detail Modal */}
+      <ZoneDetailModal
+        visible={modalVisible}
+        onClose={closeModal}
+        data={selectedZoneData}
+        isLoading={modalLoading}
+      />
     </SafeAreaView>
   );
 }
@@ -217,6 +360,33 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
+  legend: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    backgroundColor: 'rgba(24, 24, 27, 0.95)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#27272A',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendText: {
+    fontSize: 11,
+    color: '#A1A1AA',
+  },
   centerButton: {
     position: 'absolute',
     bottom: 16,
@@ -234,20 +404,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 4,
-  },
-  comingSoonBadge: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    backgroundColor: 'rgba(24, 24, 27, 0.9)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#27272A',
-  },
-  comingSoonText: {
-    fontSize: 12,
-    color: '#A1A1AA',
   },
 });
