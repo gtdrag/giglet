@@ -20,10 +20,9 @@ export default function DashboardPage() {
             <Text style={styles.cardTitle}>Earnings</Text>
           </View>
           <Text style={styles.earningsAmount}>$0.00</Text>
-          <Text style={styles.cardSubtext}>Today</Text>
+          <Text style={styles.cardSubtext}>This Week</Text>
           <View style={styles.periodSelector}>
-            <PeriodButton label="Today" active />
-            <PeriodButton label="Week" />
+            <PeriodButton label="Week" active />
             <PeriodButton label="Month" />
             <PeriodButton label="Year" />
           </View>
