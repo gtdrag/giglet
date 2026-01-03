@@ -33,26 +33,6 @@ export default function DashboardPage() {
           </Pressable>
         </View>
 
-        {/* Mileage Card */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardIconContainer}>
-              <Ionicons name="car" size={20} color="#06B6D4" />
-            </View>
-            <Text style={styles.cardTitle}>Mileage</Text>
-            <View style={styles.trackingBadge}>
-              <View style={styles.trackingDot} />
-              <Text style={styles.trackingText}>Inactive</Text>
-            </View>
-          </View>
-          <Text style={styles.mileageAmount}>0.0 mi</Text>
-          <Text style={styles.taxEstimate}>$0.00 tax deduction estimate</Text>
-          <Pressable style={styles.cardLink}>
-            <Text style={styles.cardLinkText}>View trip history</Text>
-            <Ionicons name="chevron-forward" size={16} color="#06B6D4" />
-          </Pressable>
-        </View>
-
         {/* Import Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -168,17 +148,6 @@ const styles = StyleSheet.create({
     color: '#22C55E',
     marginBottom: 4,
   },
-  mileageAmount: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#06B6D4',
-    marginBottom: 4,
-  },
-  taxEstimate: {
-    fontSize: 14,
-    color: '#71717A',
-    marginBottom: 16,
-  },
   periodSelector: {
     flexDirection: 'row',
     backgroundColor: '#27272A',
@@ -221,26 +190,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#71717A',
     flex: 1,
-  },
-  trackingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#27272A',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 6,
-  },
-  trackingDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#71717A',
-  },
-  trackingText: {
-    fontSize: 12,
-    color: '#71717A',
-    fontWeight: '500',
   },
   importButtons: {
     flexDirection: 'row',
