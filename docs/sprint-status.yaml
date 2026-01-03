@@ -94,7 +94,7 @@ development_status:
   5-5-event-boost-integration: done
   5-6-zone-tap-detail-view: done
   5-7-best-zone-recommendation-banner: done
-  5-8-zone-score-refresh-and-real-time-updates: backlog
+  5-8-zone-score-refresh-and-real-time-updates: done
   epic-5-retrospective: optional
 
   # ============================================

@@ -1,9 +1,27 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, AppState, AppStateStatus } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { PROVIDER_GOOGLE, Region, Circle, MapPressEvent } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+
+// Refresh interval: 15 minutes in milliseconds
+const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+
+// Format relative time (e.g., "2 min ago", "Just now")
+function formatRelativeTime(timestamp: number): string {
+  const now = Date.now();
+  const diffMs = now - timestamp;
+  const diffMin = Math.floor(diffMs / 60000);
+
+  if (diffMin < 1) return 'Just now';
+  if (diffMin === 1) return '1 min ago';
+  if (diffMin < 60) return `${diffMin} min ago`;
+
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours === 1) return '1 hour ago';
+  return `${diffHours} hours ago`;
+}
 import { ZoneDetailModal } from '../../src/components/ZoneDetailModal';
 import { RecommendationBanner } from '../../src/components/RecommendationBanner';
 import { getNearbyZones, getScoreColor, getScoreOpacity, ZoneScoreResponse, NearbyZone } from '../../src/services/zones';
@@ -47,6 +65,10 @@ export default function MapPage() {
   // Zone analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState({ processed: 0, total: 25 });
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [relativeTime, setRelativeTime] = useState<string>('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const appState = useRef(AppState.currentState);
 
   // Modal state
   const [modalVisible, setModalVisible] = useState(false);
@@ -57,6 +79,44 @@ export default function MapPage() {
   useEffect(() => {
     requestLocationPermission();
   }, []);
+
+  // Update relative time display every minute
+  useEffect(() => {
+    if (!lastUpdated) return;
+
+    // Update immediately
+    setRelativeTime(formatRelativeTime(lastUpdated));
+
+    // Update every minute
+    const interval = setInterval(() => {
+      setRelativeTime(formatRelativeTime(lastUpdated));
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [lastUpdated]);
+
+  // Auto-refresh zones every 15 minutes when app is in foreground
+  useEffect(() => {
+    if (!location) return;
+
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      appState.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    const refreshInterval = setInterval(() => {
+      // Only refresh if app is in foreground and not already analyzing
+      if (appState.current === 'active' && !isAnalyzing && !isRefreshing) {
+        handleRefresh();
+      }
+    }, REFRESH_INTERVAL_MS);
+
+    return () => {
+      clearInterval(refreshInterval);
+      subscription.remove();
+    };
+  }, [location, isAnalyzing, isRefreshing]);
 
   const loadZonesWithAnimation = async (lat: number, lng: number) => {
     setIsAnalyzing(true);
@@ -80,6 +140,7 @@ export default function MapPage() {
       }
 
       setIsAnalyzing(false);
+      setLastUpdated(Date.now());
     } catch (error) {
       console.error('Failed to load zones:', error);
       setIsAnalyzing(false);
@@ -122,6 +183,22 @@ export default function MapPage() {
       loadZonesWithAnimation(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude);
     }
   };
+
+  // Manual refresh - called by refresh button and auto-refresh
+  const handleRefresh = useCallback(async () => {
+    if (!location || isAnalyzing || isRefreshing) return;
+
+    setIsRefreshing(true);
+    try {
+      const allZones = await getNearbyZones(location.latitude, location.longitude);
+      setZones(allZones);
+      setLastUpdated(Date.now());
+    } catch (error) {
+      console.error('Failed to refresh zones:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [location, isAnalyzing, isRefreshing]);
 
   const centerOnUser = async () => {
     try {
@@ -268,30 +345,54 @@ export default function MapPage() {
           </MapView>
         )}
 
-        {/* Legend */}
-        <View style={styles.legend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#22C55E' }]} />
-            <Text style={styles.legendText}>Hot</Text>
+        {/* Legend with timestamp */}
+        <View style={styles.legendContainer}>
+          <View style={styles.legend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#22C55E' }]} />
+              <Text style={styles.legendText}>Hot</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#EAB308' }]} />
+              <Text style={styles.legendText}>Busy</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#F97316' }]} />
+              <Text style={styles.legendText}>Moderate</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+              <Text style={styles.legendText}>Slow</Text>
+            </View>
           </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#EAB308' }]} />
-            <Text style={styles.legendText}>Busy</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#F97316' }]} />
-            <Text style={styles.legendText}>Moderate</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
-            <Text style={styles.legendText}>Slow</Text>
-          </View>
+          {relativeTime && !isAnalyzing && (
+            <View style={styles.timestampContainer}>
+              <Ionicons name="time-outline" size={12} color="#71717A" />
+              <Text style={styles.timestampText}>{relativeTime}</Text>
+            </View>
+          )}
         </View>
 
-        {/* Center on user button */}
-        <TouchableOpacity style={styles.centerButton} onPress={centerOnUser}>
-          <Ionicons name="locate" size={24} color="#FAFAFA" />
-        </TouchableOpacity>
+        {/* Bottom buttons container */}
+        <View style={styles.bottomButtons}>
+          {/* Refresh button */}
+          <TouchableOpacity
+            style={[styles.mapButton, isRefreshing && styles.mapButtonDisabled]}
+            onPress={handleRefresh}
+            disabled={isRefreshing || isAnalyzing}
+          >
+            {isRefreshing ? (
+              <ActivityIndicator size="small" color="#06B6D4" />
+            ) : (
+              <Ionicons name="refresh" size={24} color="#FAFAFA" />
+            )}
+          </TouchableOpacity>
+
+          {/* Center on user button */}
+          <TouchableOpacity style={styles.mapButton} onPress={centerOnUser}>
+            <Ionicons name="locate" size={24} color="#FAFAFA" />
+          </TouchableOpacity>
+        </View>
 
         {/* Analyzing overlay */}
         {isAnalyzing && (
@@ -401,10 +502,13 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  legend: {
+  legendContainer: {
     position: 'absolute',
     top: 16,
     left: 16,
+    gap: 6,
+  },
+  legend: {
     backgroundColor: 'rgba(24, 24, 27, 0.95)',
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -428,10 +532,29 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#A1A1AA',
   },
-  centerButton: {
+  timestampContainer: {
+    backgroundColor: 'rgba(24, 24, 27, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#27272A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+  },
+  timestampText: {
+    fontSize: 11,
+    color: '#71717A',
+  },
+  bottomButtons: {
     position: 'absolute',
     bottom: 16,
     right: 16,
+    gap: 12,
+  },
+  mapButton: {
     backgroundColor: '#18181B',
     borderRadius: 12,
     width: 48,
@@ -445,6 +568,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 4,
+  },
+  mapButtonDisabled: {
+    opacity: 0.6,
   },
   analyzingOverlay: {
     position: 'absolute',
