@@ -91,7 +91,7 @@ development_status:
   5-2-zone-scoring-algorithm-backend: done
   5-3-meal-time-boost-logic: done
   5-4-weather-impact-integration: done
-  5-5-event-boost-integration: backlog
+  5-5-event-boost-integration: done
   5-6-zone-tap-detail-view: done
   5-7-best-zone-recommendation-banner: backlog
   5-8-zone-score-refresh-and-real-time-updates: backlog
