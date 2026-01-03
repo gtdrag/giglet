@@ -26,6 +26,7 @@ export default function MileagePage() {
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [showManualModeInfo, setShowManualModeInfo] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Check permission on mount and when tab is focused
   useEffect(() => {
@@ -48,6 +49,11 @@ export default function MileagePage() {
 
   const handleOpenSettings = useCallback(() => {
     Linking.openSettings();
+    setShowSettingsModal(false);
+  }, []);
+
+  const handleTrackingBannerPress = useCallback(() => {
+    setShowSettingsModal(true);
   }, []);
 
   const handleUseManualMode = useCallback(() => {
@@ -106,16 +112,17 @@ export default function MileagePage() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Tracking Active Header */}
-          <View style={styles.trackingActiveCard}>
+          {/* Tracking Active Header - Tap to show settings modal */}
+          <Pressable style={styles.trackingActiveCard} onPress={handleTrackingBannerPress}>
             <View style={styles.trackingActiveHeader}>
               <View style={styles.trackingActiveDot} />
               <Text style={styles.trackingActiveText}>Tracking Active</Text>
+              <Ionicons name="chevron-forward" size={18} color="#06B6D4" style={{ marginLeft: 'auto' }} />
             </View>
             <Text style={styles.trackingActiveSubtext}>
               Your miles are being tracked automatically
             </Text>
-          </View>
+          </Pressable>
 
           {/* Active Trip Card (if trip in progress) */}
           {tripState !== 'IDLE' && activeTrip && (
@@ -202,6 +209,34 @@ export default function MileagePage() {
             )}
           </View>
         </ScrollView>
+
+        {/* Settings Confirmation Modal */}
+        <Modal
+          visible={showSettingsModal}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setShowSettingsModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalIconContainer}>
+                <Ionicons name="settings-outline" size={56} color="#06B6D4" />
+              </View>
+              <Text style={styles.modalTitle}>Manage Location Access</Text>
+              <Text style={styles.modalDescription}>
+                This will open your device settings where you can change location permissions for Giglet.
+              </Text>
+              <View style={styles.modalButtons}>
+                <Pressable style={styles.modalPrimaryButton} onPress={handleOpenSettings}>
+                  <Text style={styles.modalPrimaryButtonText}>Open Settings</Text>
+                </Pressable>
+                <Pressable style={styles.modalSecondaryButton} onPress={() => setShowSettingsModal(false)}>
+                  <Text style={styles.modalSecondaryButtonText}>Cancel</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     );
   }
@@ -369,6 +404,34 @@ export default function MileagePage() {
               </Pressable>
               <Pressable style={styles.modalSecondaryButton} onPress={handleUseManualMode}>
                 <Text style={styles.modalSecondaryButtonText}>Use Manual Mode</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Settings Confirmation Modal */}
+      <Modal
+        visible={showSettingsModal}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowSettingsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalIconContainer}>
+              <Ionicons name="settings-outline" size={56} color="#06B6D4" />
+            </View>
+            <Text style={styles.modalTitle}>Manage Location Access</Text>
+            <Text style={styles.modalDescription}>
+              This will open your device settings where you can change location permissions for Giglet.
+            </Text>
+            <View style={styles.modalButtons}>
+              <Pressable style={styles.modalPrimaryButton} onPress={handleOpenSettings}>
+                <Text style={styles.modalPrimaryButtonText}>Open Settings</Text>
+              </Pressable>
+              <Pressable style={styles.modalSecondaryButton} onPress={() => setShowSettingsModal(false)}>
+                <Text style={styles.modalSecondaryButtonText}>Cancel</Text>
               </Pressable>
             </View>
           </View>
