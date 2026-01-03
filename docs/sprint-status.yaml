@@ -103,7 +103,7 @@ development_status:
   epic-6: contexted
   6-1-location-permission-and-tracking-enable: done
   6-2-background-location-tracking: done
-  6-3-trip-detection-and-logging: backlog
+  6-3-trip-detection-and-logging: done
   6-4-mileage-dashboard-display: backlog
   6-5-trip-history-list: backlog
   6-6-manual-trip-entry-and-editing: backlog
