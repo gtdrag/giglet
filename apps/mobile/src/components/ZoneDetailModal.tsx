@@ -1,5 +1,8 @@
-import { View, Text, StyleSheet, Modal, Pressable, ActivityIndicator } from 'react-native';
+import { useRef } from 'react';
+import { View, Text, StyleSheet, Modal, Pressable, ActivityIndicator, Linking, Platform, Alert, ScrollView, Animated, PanResponder, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 interface ZoneScoreFactors {
   mealTimeBoost: number;
@@ -29,6 +32,8 @@ interface ZoneDetailModalProps {
   onClose: () => void;
   data: ZoneDetailData | null;
   isLoading?: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 // Score thresholds for colors
@@ -109,8 +114,80 @@ const getImpactColor = (impact: 'high' | 'medium' | 'low'): string => {
   }
 };
 
-export function ZoneDetailModal({ visible, onClose, data, isLoading }: ZoneDetailModalProps) {
+export function ZoneDetailModal({ visible, onClose, data, isLoading, latitude, longitude }: ZoneDetailModalProps) {
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to downward gestures
+        return gestureState.dy > 5;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow downward movement
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If dragged more than 100px down or with velocity, dismiss
+        if (gestureState.dy > 100 || gestureState.vy > 0.5) {
+          Animated.timing(translateY, {
+            toValue: SCREEN_HEIGHT,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            translateY.setValue(0);
+            onClose();
+          });
+        } else {
+          // Snap back
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 8,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
   if (!visible) return null;
+
+  const openDirections = () => {
+    if (!latitude || !longitude) return;
+
+    const destination = `${latitude},${longitude}`;
+
+    if (Platform.OS === 'ios') {
+      // On iOS, offer choice between Apple Maps and Google Maps
+      Alert.alert(
+        'Get Directions',
+        'Choose your maps app',
+        [
+          {
+            text: 'Apple Maps',
+            onPress: () => Linking.openURL(`maps://?daddr=${destination}`),
+          },
+          {
+            text: 'Google Maps',
+            onPress: () => Linking.openURL(`comgooglemaps://?daddr=${destination}&directionsmode=driving`).catch(() => {
+              // Google Maps not installed, open in browser
+              Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destination}`);
+            }),
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    } else {
+      // On Android, open Google Maps directly
+      Linking.openURL(`google.navigation:q=${destination}`).catch(() => {
+        // Fallback to web
+        Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destination}`);
+      });
+    }
+  };
 
   const renderFactor = (
     key: keyof typeof FACTOR_CONFIG,
@@ -153,18 +230,26 @@ export function ZoneDetailModal({ visible, onClose, data, isLoading }: ZoneDetai
     >
       <View style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={styles.modalContainer}>
-          {/* Handle bar */}
-          <View style={styles.handleBar} />
+        <Animated.View style={[styles.modalContainer, { transform: [{ translateY }] }]}>
+          {/* Handle bar - draggable to dismiss */}
+          <View {...panResponder.panHandlers} style={styles.handleContainer}>
+            <View style={styles.handleBar} />
+          </View>
 
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#06B6D4" />
-              <Text style={styles.loadingText}>Loading zone data...</Text>
-            </View>
-          ) : data ? (
-            <>
-              {/* Score Header */}
+          {/* X button to close */}
+          <Pressable style={styles.closeX} onPress={onClose}>
+            <Ionicons name="close" size={24} color="#71717A" />
+          </Pressable>
+
+          <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#06B6D4" />
+                <Text style={styles.loadingText}>Loading zone data...</Text>
+              </View>
+            ) : data ? (
+              <>
+                {/* Score Header */}
               <View style={styles.header}>
                 <View style={styles.scoreCircle}>
                   <Text style={[styles.scoreNumber, { color: getScoreColor(data.score) }]}>
@@ -217,12 +302,21 @@ export function ZoneDetailModal({ visible, onClose, data, isLoading }: ZoneDetai
               <Text style={styles.errorText}>Unable to load zone data</Text>
             </View>
           )}
+          </ScrollView>
+
+          {/* Go Here Button */}
+          {data && latitude && longitude && (
+            <Pressable style={styles.goButton} onPress={openDirections}>
+              <Ionicons name="navigate" size={20} color="#FAFAFA" />
+              <Text style={styles.goButtonText}>Go Here</Text>
+            </Pressable>
+          )}
 
           {/* Close Button */}
           <Pressable style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>Close</Text>
           </Pressable>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -242,17 +336,33 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
-    paddingBottom: 34,
+    paddingBottom: 48,
     maxHeight: '80%',
+  },
+  handleContainer: {
+    paddingTop: 12,
+    paddingBottom: 8,
+    alignItems: 'center',
   },
   handleBar: {
     width: 40,
     height: 4,
     backgroundColor: '#3F3F46',
     borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 20,
+  },
+  closeX: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  scrollContent: {
+    flexGrow: 0,
+    flexShrink: 1,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -372,12 +482,27 @@ const styles = StyleSheet.create({
     color: '#71717A',
     marginTop: 2,
   },
+  goButton: {
+    backgroundColor: '#06B6D4',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  goButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FAFAFA',
+  },
   closeButton: {
     backgroundColor: '#27272A',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 12,
   },
   closeButtonText: {
     fontSize: 16,

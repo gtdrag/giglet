@@ -5,21 +5,13 @@ import MapView, { PROVIDER_GOOGLE, Region, Circle, MapPressEvent } from 'react-n
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { ZoneDetailModal } from '../../src/components/ZoneDetailModal';
-import { getZoneScore, getScoreColor, getScoreOpacity, ZoneScoreResponse } from '../../src/services/zones';
+import { getNearbyZones, getZoneScore, getScoreColor, getScoreOpacity, ZoneScoreResponse, NearbyZone } from '../../src/services/zones';
 
 interface LocationState {
   latitude: number;
   longitude: number;
   latitudeDelta: number;
   longitudeDelta: number;
-}
-
-interface ZoneCircle {
-  id: string;
-  latitude: number;
-  longitude: number;
-  score: number;
-  label: string;
 }
 
 const DEFAULT_LOCATION: LocationState = {
@@ -44,101 +36,54 @@ function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
-// Small delay helper
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Check if a coordinate is on land (not water) using reverse geocoding
-async function isLandCoordinate(lat: number, lng: number): Promise<boolean> {
-  try {
-    const results = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
-    if (results.length > 0) {
-      const result = results[0];
-
-      // If we have a street address, it's definitely land (even if name has "Bay" etc)
-      if (result.street && result.streetNumber) {
-        return true;
-      }
-
-      // No street address - check if name indicates water
-      const nameLower = (result.name || '').toLowerCase();
-      const isWaterName = nameLower === 'san francisco bay' ||
-                          nameLower === 'pacific ocean' ||
-                          nameLower.includes(' ocean') ||
-                          (nameLower.includes('bay') && !nameLower.includes('blvd') && !nameLower.includes('st') && !nameLower.includes('ave'));
-
-      if (isWaterName) {
-        return false;
-      }
-
-      // Has some location info = land
-      return !!(result.district || result.postalCode || result.name);
-    }
-    return false;
-  } catch {
-    // Default to showing zone if geocoding fails (rate limit, network error, etc)
-    return true;
-  }
-}
-
-// Generate sample zones around a location, filtering out water areas
-async function generateSampleZones(lat: number, lng: number): Promise<ZoneCircle[]> {
-  const candidates: { lat: number; lng: number; i: number; j: number }[] = [];
-  const gridSize = 2;
-  const stepDegrees = 0.015; // ~1.5km
-
-  // Generate all candidate coordinates
-  for (let i = -gridSize; i <= gridSize; i++) {
-    for (let j = -gridSize; j <= gridSize; j++) {
-      candidates.push({
-        lat: lat + i * stepDegrees,
-        lng: lng + j * stepDegrees,
-        i,
-        j,
-      });
-    }
-  }
-
-  // Check coordinates sequentially with delay to avoid rate limiting
-  const zones: ZoneCircle[] = [];
-  for (const candidate of candidates) {
-    const isLand = await isLandCoordinate(candidate.lat, candidate.lng);
-    await delay(100); // 100ms delay between requests
-
-    if (!isLand) continue;
-
-    // Vary scores based on position (center is hotter)
-    const distFromCenter = Math.sqrt(candidate.i * candidate.i + candidate.j * candidate.j);
-    const baseScore = Math.max(20, 85 - distFromCenter * 15);
-    const variation = Math.floor(Math.random() * 20) - 10;
-    const score = Math.max(0, Math.min(100, baseScore + variation));
-
-    zones.push({
-      id: `zone_${candidate.i}_${candidate.j}`,
-      latitude: candidate.lat,
-      longitude: candidate.lng,
-      score,
-      label: score >= 80 ? 'Hot' : score >= 60 ? 'Busy' : score >= 40 ? 'Moderate' : score >= 20 ? 'Slow' : 'Dead',
-    });
-  }
-
-  return zones;
-}
-
 export default function MapPage() {
   const [location, setLocation] = useState<LocationState | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [zones, setZones] = useState<ZoneCircle[]>([]);
+  const [zones, setZones] = useState<NearbyZone[]>([]);
   const mapRef = useRef<MapView>(null);
+
+  // Zone analysis state
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState({ processed: 0, total: 25 });
 
   // Modal state
   const [modalVisible, setModalVisible] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [selectedZoneData, setSelectedZoneData] = useState<ZoneScoreResponse | null>(null);
+  const [selectedZoneCoords, setSelectedZoneCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
     requestLocationPermission();
   }, []);
+
+  const loadZonesWithAnimation = async (lat: number, lng: number) => {
+    setIsAnalyzing(true);
+    setZones([]);
+    setAnalysisProgress({ processed: 0, total: 25 });
+
+    try {
+      // Fetch all zones from API
+      const allZones = await getNearbyZones(lat, lng);
+      const total = allZones.length;
+
+      // Animate zones appearing one by one (50ms delay between each)
+      for (let i = 0; i < allZones.length; i++) {
+        setZones((prev) => [...prev, allZones[i]]);
+        setAnalysisProgress({ processed: i + 1, total });
+
+        // Small delay for visual effect (faster than real geocoding)
+        if (i < allZones.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+      }
+
+      setIsAnalyzing(false);
+    } catch (error) {
+      console.error('Failed to load zones:', error);
+      setIsAnalyzing(false);
+    }
+  };
 
   const requestLocationPermission = async () => {
     setIsLoading(true);
@@ -150,9 +95,8 @@ export default function MapPage() {
       if (status !== 'granted') {
         setErrorMsg('Location permission denied. Enable location to see Focus Zones near you.');
         setLocation(DEFAULT_LOCATION);
-        const generatedZones = await generateSampleZones(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude);
-        setZones(generatedZones);
         setIsLoading(false);
+        loadZonesWithAnimation(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude);
         return;
       }
 
@@ -168,15 +112,13 @@ export default function MapPage() {
       };
 
       setLocation(newLocation);
-      const generatedZones = await generateSampleZones(newLocation.latitude, newLocation.longitude);
-      setZones(generatedZones);
+      setIsLoading(false);
+      loadZonesWithAnimation(newLocation.latitude, newLocation.longitude);
     } catch (error) {
       setErrorMsg('Unable to get location. Please try again.');
       setLocation(DEFAULT_LOCATION);
-      const generatedZones = await generateSampleZones(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude);
-      setZones(generatedZones);
-    } finally {
       setIsLoading(false);
+      loadZonesWithAnimation(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude);
     }
   };
 
@@ -200,10 +142,11 @@ export default function MapPage() {
     }
   };
 
-  const handleZoneTap = useCallback(async (zone: ZoneCircle) => {
+  const handleZoneTap = useCallback(async (zone: NearbyZone) => {
     setModalVisible(true);
     setModalLoading(true);
     setSelectedZoneData(null);
+    setSelectedZoneCoords({ lat: zone.latitude, lng: zone.longitude });
 
     try {
       const data = await getZoneScore(zone.latitude, zone.longitude);
@@ -220,13 +163,14 @@ export default function MapPage() {
   const closeModal = useCallback(() => {
     setModalVisible(false);
     setSelectedZoneData(null);
+    setSelectedZoneCoords(null);
   }, []);
 
   const handleMapPress = useCallback((event: MapPressEvent) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
 
     // Find the closest zone within tap radius
-    let closestZone: ZoneCircle | null = null;
+    let closestZone: NearbyZone | null = null;
     let closestDistance = Infinity;
 
     for (const zone of zones) {
@@ -322,6 +266,21 @@ export default function MapPage() {
         <TouchableOpacity style={styles.centerButton} onPress={centerOnUser}>
           <Ionicons name="locate" size={24} color="#FAFAFA" />
         </TouchableOpacity>
+
+        {/* Analyzing overlay */}
+        {isAnalyzing && (
+          <View style={styles.analyzingOverlay}>
+            <View style={styles.analyzingCard}>
+              <ActivityIndicator size="small" color="#06B6D4" />
+              <View style={styles.analyzingTextContainer}>
+                <Text style={styles.analyzingTitle}>Analyzing zone data...</Text>
+                <Text style={styles.analyzingSubtitle}>
+                  Calculating optimal delivery areas ({analysisProgress.processed}/{analysisProgress.total})
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
       </View>
 
       {/* Zone Detail Modal */}
@@ -330,6 +289,8 @@ export default function MapPage() {
         onClose={closeModal}
         data={selectedZoneData}
         isLoading={modalLoading}
+        latitude={selectedZoneCoords?.lat}
+        longitude={selectedZoneCoords?.lng}
       />
     </SafeAreaView>
   );
@@ -458,5 +419,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 4,
+  },
+  analyzingOverlay: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 72,
+  },
+  analyzingCard: {
+    backgroundColor: 'rgba(24, 24, 27, 0.95)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#27272A',
+  },
+  analyzingTextContainer: {
+    flex: 1,
+  },
+  analyzingTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FAFAFA',
+  },
+  analyzingSubtitle: {
+    fontSize: 12,
+    color: '#71717A',
+    marginTop: 2,
   },
 });
