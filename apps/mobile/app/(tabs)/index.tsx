@@ -44,30 +44,80 @@ function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
-// Generate sample zones around a location
-function generateSampleZones(lat: number, lng: number): ZoneCircle[] {
-  const zones: ZoneCircle[] = [];
+// Small delay helper
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Check if a coordinate is on land (not water) using reverse geocoding
+async function isLandCoordinate(lat: number, lng: number): Promise<boolean> {
+  try {
+    const results = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+    if (results.length > 0) {
+      const result = results[0];
+
+      // If we have a street address, it's definitely land (even if name has "Bay" etc)
+      if (result.street && result.streetNumber) {
+        return true;
+      }
+
+      // No street address - check if name indicates water
+      const nameLower = (result.name || '').toLowerCase();
+      const isWaterName = nameLower === 'san francisco bay' ||
+                          nameLower === 'pacific ocean' ||
+                          nameLower.includes(' ocean') ||
+                          (nameLower.includes('bay') && !nameLower.includes('blvd') && !nameLower.includes('st') && !nameLower.includes('ave'));
+
+      if (isWaterName) {
+        return false;
+      }
+
+      // Has some location info = land
+      return !!(result.district || result.postalCode || result.name);
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+// Generate sample zones around a location, filtering out water areas
+async function generateSampleZones(lat: number, lng: number): Promise<ZoneCircle[]> {
+  const candidates: { lat: number; lng: number; i: number; j: number }[] = [];
   const gridSize = 2;
   const stepDegrees = 0.015; // ~1.5km
 
+  // Generate all candidate coordinates
   for (let i = -gridSize; i <= gridSize; i++) {
     for (let j = -gridSize; j <= gridSize; j++) {
-      const zoneLat = lat + i * stepDegrees;
-      const zoneLng = lng + j * stepDegrees;
-      // Vary scores based on position (center is hotter)
-      const distFromCenter = Math.sqrt(i * i + j * j);
-      const baseScore = Math.max(20, 85 - distFromCenter * 15);
-      const variation = Math.floor(Math.random() * 20) - 10;
-      const score = Math.max(0, Math.min(100, baseScore + variation));
-
-      zones.push({
-        id: `zone_${i}_${j}`,
-        latitude: zoneLat,
-        longitude: zoneLng,
-        score,
-        label: score >= 80 ? 'Hot' : score >= 60 ? 'Busy' : score >= 40 ? 'Moderate' : score >= 20 ? 'Slow' : 'Dead',
+      candidates.push({
+        lat: lat + i * stepDegrees,
+        lng: lng + j * stepDegrees,
+        i,
+        j,
       });
     }
+  }
+
+  // Check coordinates sequentially with delay to avoid rate limiting
+  const zones: ZoneCircle[] = [];
+  for (const candidate of candidates) {
+    const isLand = await isLandCoordinate(candidate.lat, candidate.lng);
+    await delay(100); // 100ms delay between requests
+
+    if (!isLand) continue;
+
+    // Vary scores based on position (center is hotter)
+    const distFromCenter = Math.sqrt(candidate.i * candidate.i + candidate.j * candidate.j);
+    const baseScore = Math.max(20, 85 - distFromCenter * 15);
+    const variation = Math.floor(Math.random() * 20) - 10;
+    const score = Math.max(0, Math.min(100, baseScore + variation));
+
+    zones.push({
+      id: `zone_${candidate.i}_${candidate.j}`,
+      latitude: candidate.lat,
+      longitude: candidate.lng,
+      score,
+      label: score >= 80 ? 'Hot' : score >= 60 ? 'Busy' : score >= 40 ? 'Moderate' : score >= 20 ? 'Slow' : 'Dead',
+    });
   }
 
   return zones;
@@ -99,7 +149,8 @@ export default function MapPage() {
       if (status !== 'granted') {
         setErrorMsg('Location permission denied. Enable location to see Focus Zones near you.');
         setLocation(DEFAULT_LOCATION);
-        setZones(generateSampleZones(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude));
+        const generatedZones = await generateSampleZones(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude);
+        setZones(generatedZones);
         setIsLoading(false);
         return;
       }
@@ -116,11 +167,13 @@ export default function MapPage() {
       };
 
       setLocation(newLocation);
-      setZones(generateSampleZones(newLocation.latitude, newLocation.longitude));
+      const generatedZones = await generateSampleZones(newLocation.latitude, newLocation.longitude);
+      setZones(generatedZones);
     } catch (error) {
       setErrorMsg('Unable to get location. Please try again.');
       setLocation(DEFAULT_LOCATION);
-      setZones(generateSampleZones(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude));
+      const generatedZones = await generateSampleZones(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude);
+      setZones(generatedZones);
     } finally {
       setIsLoading(false);
     }
