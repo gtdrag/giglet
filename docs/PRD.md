@@ -430,6 +430,32 @@ Future: Add UserEarningsData factor as user base grows.
 
 ---
 
+## Future Considerations
+
+### Multilingual Support (High Priority - Research Needed)
+
+**Idea:** Make Giglet multilingual, with Spanish as the primary secondary language.
+
+**Open Questions:**
+- Should the app be bilingual (English + Spanish) or fully Spanish-first for certain markets?
+- What percentage of food delivery drivers are Spanish-speaking?
+- Are there geographic markets (e.g., Miami, Los Angeles, Texas) where Spanish-first would be a competitive advantage?
+
+**Market Research Needed:**
+- Demographics of gig delivery drivers by language preference
+- Competitor analysis: Do Gridwise, Stride, Everlance offer Spanish?
+- User interviews with Spanish-speaking drivers
+
+**Technical Considerations:**
+- Use React Native i18n library (react-i18next or expo-localization)
+- Extract all user-facing strings to translation files
+- RTL support not needed for Spanish, but consider for future languages
+- API error messages and notifications also need translation
+
+**Priority:** Add to post-MVP roadmap. Consider as a differentiation opportunity if competitors don't offer Spanish support.
+
+---
+
 ## References
 
 - Competitive analysis: Gridwise ($10/mo), Stride (free, mileage only), Everlance ($8/mo)
