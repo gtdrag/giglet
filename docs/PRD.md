@@ -454,6 +454,37 @@ Future: Add UserEarningsData factor as user base grows.
 
 **Priority:** Add to post-MVP roadmap. Consider as a differentiation opportunity if competitors don't offer Spanish support.
 
+### Real-Time Zone Alerts & Push Notifications (High Priority - Pro Feature)
+
+**Idea:** Proactively notify drivers when zone conditions change, rather than requiring them to check the app.
+
+**Trigger Conditions:**
+- A new "hot zone" appears (score jumps above threshold)
+- The highest-scoring zone changes location
+- A zone near the driver's current location spikes in score
+- Event-based surge (concert ending, game letting out, etc.)
+- Weather change creating demand surge
+
+**User Value:**
+- Drivers don't miss opportunities while on a delivery
+- "The app works for you" feeling - proactive vs reactive
+- Competitive advantage: no competitor offers real-time zone intelligence alerts
+
+**Technical Considerations:**
+- Background polling interval: Every 5 minutes? Every 2 minutes during peak hours?
+- Battery impact: Must be lightweight, use efficient location APIs
+- Push notification service: Expo Push Notifications or Firebase Cloud Messaging
+- Rate limiting: Don't spam drivers - smart throttling (e.g., max 3 alerts per hour)
+- User preferences: Let drivers configure alert sensitivity and quiet hours
+- Server-side vs client-side: Consider server-initiated push for better battery life
+
+**Implementation Approach:**
+1. Start with client-side polling (simpler, app already fetches zones)
+2. Graduate to server-side push for Pro users (more efficient, requires backend work)
+3. Add user preferences for alert types and frequency
+
+**Priority:** Pro-tier feature. Add to Epic 5 backlog (Story 5.8 or new story). Key differentiator from competitors.
+
 ---
 
 ## References
