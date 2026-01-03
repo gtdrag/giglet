@@ -1,16 +1,27 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Linking, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { useMileageStore } from '../../src/stores/mileageStore';
+
+// IRS mileage rate for 2024
+const IRS_MILEAGE_RATE = 0.67;
 
 export default function MileagePage() {
   const {
     trackingEnabled,
     permissionStatus,
     isLoading,
+    tripState,
+    activeTrip,
+    todayMiles,
+    weekMiles,
+    todayTrips,
+    recentTrips,
     checkPermission,
     enableTracking,
+    loadTripStats,
+    endCurrentTrip,
   } = useMileageStore();
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
@@ -19,7 +30,8 @@ export default function MileagePage() {
   // Check permission on mount and when tab is focused
   useEffect(() => {
     checkPermission();
-  }, [checkPermission]);
+    loadTripStats();
+  }, [checkPermission, loadTripStats]);
 
   const handleEnableTracking = useCallback(() => {
     setShowPermissionModal(true);
@@ -42,8 +54,51 @@ export default function MileagePage() {
     setShowManualModeInfo(false);
   }, []);
 
+  const handleEndTrip = useCallback(() => {
+    endCurrentTrip();
+  }, [endCurrentTrip]);
+
+  // Format miles display
+  const formatMiles = (miles: number): string => {
+    return miles.toFixed(1);
+  };
+
+  // Format tax estimate
+  const formatTaxEstimate = (miles: number): string => {
+    return `$${(miles * IRS_MILEAGE_RATE).toFixed(2)}`;
+  };
+
+  // Format relative time
+  const formatRelativeTime = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return date.toLocaleDateString();
+  };
+
+  // Get trip state display
+  const getTripStateDisplay = (): { label: string; color: string } => {
+    switch (tripState) {
+      case 'MOVING':
+        return { label: 'Recording Trip', color: '#22C55E' };
+      case 'PAUSED':
+        return { label: 'Trip Paused', color: '#EAB308' };
+      default:
+        return { label: 'Idle', color: '#71717A' };
+    }
+  };
+
   // Show tracking active state
   if (trackingEnabled) {
+    const tripStateDisplay = getTripStateDisplay();
+    const currentMiles = activeTrip?.currentMiles ?? 0;
+
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <ScrollView
@@ -62,7 +117,32 @@ export default function MileagePage() {
             </Text>
           </View>
 
-          {/* Mileage Summary Card */}
+          {/* Active Trip Card (if trip in progress) */}
+          {tripState !== 'IDLE' && activeTrip && (
+            <View style={styles.activeTripCard}>
+              <View style={styles.activeTripHeader}>
+                <View style={[styles.tripStateDot, { backgroundColor: tripStateDisplay.color }]} />
+                <Text style={[styles.tripStateText, { color: tripStateDisplay.color }]}>
+                  {tripStateDisplay.label}
+                </Text>
+                {tripState === 'MOVING' && (
+                  <ActivityIndicator size="small" color="#22C55E" style={{ marginLeft: 8 }} />
+                )}
+              </View>
+              <Text style={styles.activeTripMiles}>{formatMiles(currentMiles)} mi</Text>
+              <Text style={styles.activeTripDuration}>
+                Started {formatRelativeTime(activeTrip.startedAt.toISOString())}
+              </Text>
+              {tripState === 'PAUSED' && (
+                <Pressable style={styles.endTripButton} onPress={handleEndTrip}>
+                  <Ionicons name="stop-circle" size={18} color="#EF4444" />
+                  <Text style={styles.endTripButtonText}>End Trip</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
+
+          {/* Today's Mileage Card */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardIconContainer}>
@@ -70,22 +150,56 @@ export default function MileagePage() {
               </View>
               <Text style={styles.cardTitle}>Today's Mileage</Text>
             </View>
-            <Text style={styles.mileageAmount}>0.0 mi</Text>
-            <Text style={styles.taxEstimate}>$0.00 tax deduction estimate</Text>
+            <Text style={styles.mileageAmount}>{formatMiles(todayMiles)} mi</Text>
+            <Text style={styles.taxEstimate}>
+              {formatTaxEstimate(todayMiles)} tax deduction estimate
+            </Text>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{todayTrips}</Text>
+                <Text style={styles.statLabel}>trips today</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{formatMiles(weekMiles)}</Text>
+                <Text style={styles.statLabel}>mi this week</Text>
+              </View>
+            </View>
           </View>
 
-          {/* Trip History Card */}
+          {/* Recent Trips Card */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <View style={styles.cardIconContainer}>
+              <View style={[styles.cardIconContainer, { backgroundColor: '#2E1065' }]}>
                 <Ionicons name="list" size={20} color="#8B5CF6" />
               </View>
               <Text style={styles.cardTitle}>Recent Trips</Text>
             </View>
-            <Text style={styles.noTripsText}>No trips recorded yet</Text>
-            <Text style={styles.noTripsSubtext}>
-              Start driving to automatically log your first trip
-            </Text>
+            {recentTrips.length === 0 ? (
+              <>
+                <Text style={styles.noTripsText}>No trips recorded yet</Text>
+                <Text style={styles.noTripsSubtext}>
+                  Start driving to automatically log your first trip
+                </Text>
+              </>
+            ) : (
+              <View style={styles.tripsList}>
+                {recentTrips.slice(0, 5).map((trip) => (
+                  <View key={trip.id} style={styles.tripItem}>
+                    <View style={styles.tripItemLeft}>
+                      <Ionicons name="location" size={16} color="#71717A" />
+                      <View>
+                        <Text style={styles.tripItemMiles}>{formatMiles(trip.miles)} mi</Text>
+                        <Text style={styles.tripItemTime}>
+                          {formatRelativeTime(trip.startedAt)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.tripItemTax}>{formatTaxEstimate(trip.miles)}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -399,6 +513,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#A1A1AA',
   },
+  // Active Trip Card
+  activeTripCard: {
+    backgroundColor: '#18181B',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#22C55E',
+  },
+  activeTripHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  tripStateDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  tripStateText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  activeTripMiles: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FAFAFA',
+    marginBottom: 4,
+  },
+  activeTripDuration: {
+    fontSize: 14,
+    color: '#71717A',
+  },
+  endTripButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#27272A',
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 16,
+  },
+  endTripButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
   // Manual Mode Card
   manualModeCard: {
     backgroundColor: '#18181B',
@@ -518,6 +680,32 @@ const styles = StyleSheet.create({
     color: '#71717A',
     marginBottom: 16,
   },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#27272A',
+    paddingTop: 16,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FAFAFA',
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#71717A',
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#27272A',
+  },
   noTripsText: {
     fontSize: 15,
     color: '#71717A',
@@ -526,6 +714,36 @@ const styles = StyleSheet.create({
   noTripsSubtext: {
     fontSize: 13,
     color: '#52525B',
+  },
+  tripsList: {
+    gap: 12,
+  },
+  tripItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#27272A',
+  },
+  tripItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  tripItemMiles: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FAFAFA',
+  },
+  tripItemTime: {
+    fontSize: 12,
+    color: '#71717A',
+  },
+  tripItemTax: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#22C55E',
   },
   // Modal styles
   modalOverlay: {

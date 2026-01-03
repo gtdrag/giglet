@@ -1,6 +1,25 @@
 import { create } from 'zustand';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  startBackgroundTracking,
+  stopBackgroundTracking,
+  isBackgroundTrackingActive,
+  setTripStateCallback,
+  initializeTrackingService,
+  getCurrentTripState,
+  getActiveTripData,
+  forceEndTrip,
+  type TripState,
+  type ActiveTrip,
+  type CompletedTrip,
+} from '../services/locationTracking';
+import {
+  getCachedTripStats,
+  calculateTripStats,
+  getCompletedTrips,
+  type TripStats,
+} from '../utils/locationStorage';
 
 const TRACKING_PREFERENCE_KEY = '@giglet/mileage_tracking_enabled';
 
@@ -13,11 +32,18 @@ interface MileageState {
   isLoading: boolean;
   error: string | null;
 
-  // Trip data (will be expanded in later stories)
+  // Trip state machine
+  tripState: TripState;
+  activeTrip: ActiveTrip | null;
+  recentTrips: CompletedTrip[];
+
+  // Trip data aggregates
   todayMiles: number;
   weekMiles: number;
   monthMiles: number;
   yearMiles: number;
+  todayTrips: number;
+  weekTrips: number;
 
   // Actions
   checkPermission: () => Promise<void>;
@@ -26,6 +52,14 @@ interface MileageState {
   setError: (error: string | null) => void;
   clearError: () => void;
   loadTrackingPreference: () => Promise<void>;
+
+  // Trip actions
+  updateTripState: (state: TripState, activeTrip: ActiveTrip | null) => void;
+  onTripCompleted: (trip: CompletedTrip) => Promise<void>;
+  loadTripStats: () => Promise<void>;
+  loadRecentTrips: () => Promise<void>;
+  endCurrentTrip: () => Promise<void>;
+  initializeTracking: () => Promise<void>;
 }
 
 export const useMileageStore = create<MileageState>((set, get) => ({
@@ -34,10 +68,44 @@ export const useMileageStore = create<MileageState>((set, get) => ({
   permissionStatus: 'undetermined',
   isLoading: true,
   error: null,
+  tripState: 'IDLE',
+  activeTrip: null,
+  recentTrips: [],
   todayMiles: 0,
   weekMiles: 0,
   monthMiles: 0,
   yearMiles: 0,
+  todayTrips: 0,
+  weekTrips: 0,
+
+  // Initialize tracking service and set up callbacks
+  initializeTracking: async () => {
+    try {
+      // Initialize the tracking service (loads saved trip state)
+      await initializeTrackingService();
+
+      // Set up callback for trip state changes
+      setTripStateCallback((state, activeTrip, completedTrip) => {
+        set({ tripState: state, activeTrip });
+
+        if (completedTrip) {
+          get().onTripCompleted(completedTrip);
+        }
+      });
+
+      // Sync current state from service
+      set({
+        tripState: getCurrentTripState(),
+        activeTrip: getActiveTripData(),
+      });
+
+      // Load trip stats
+      await get().loadTripStats();
+      await get().loadRecentTrips();
+    } catch (error) {
+      console.error('Failed to initialize tracking:', error);
+    }
+  },
 
   // Load saved tracking preference on app start
   loadTrackingPreference: async () => {
@@ -47,7 +115,18 @@ export const useMileageStore = create<MileageState>((set, get) => ({
         // Check if permission is still granted
         const { status } = await Location.getBackgroundPermissionsAsync();
         if (status === 'granted') {
-          set({ trackingEnabled: true, permissionStatus: 'granted', isLoading: false });
+          // Check if background tracking is actually running
+          const isActive = await isBackgroundTrackingActive();
+          set({
+            trackingEnabled: true,
+            permissionStatus: 'granted',
+            isLoading: false,
+          });
+
+          // Restart tracking if it was enabled but not running
+          if (!isActive) {
+            await startBackgroundTracking();
+          }
         } else {
           // Permission was revoked, update preference
           await AsyncStorage.setItem(TRACKING_PREFERENCE_KEY, 'false');
@@ -60,6 +139,9 @@ export const useMileageStore = create<MileageState>((set, get) => ({
       } else {
         set({ trackingEnabled: false, isLoading: false });
       }
+
+      // Initialize tracking service
+      await get().initializeTracking();
     } catch (error) {
       console.error('Failed to load tracking preference:', error);
       set({ isLoading: false });
@@ -82,15 +164,25 @@ export const useMileageStore = create<MileageState>((set, get) => ({
       // If permission is granted, also check if tracking was enabled
       if (permissionStatus === 'granted') {
         const saved = await AsyncStorage.getItem(TRACKING_PREFERENCE_KEY);
+        const trackingEnabled = saved === 'true';
         set({
           permissionStatus,
-          trackingEnabled: saved === 'true',
+          trackingEnabled,
           isLoading: false,
         });
+
+        // Ensure tracking is running if enabled
+        if (trackingEnabled) {
+          const isActive = await isBackgroundTrackingActive();
+          if (!isActive) {
+            await startBackgroundTracking();
+          }
+        }
       } else {
         // If permission not granted, tracking cannot be enabled
         if (get().trackingEnabled) {
           await AsyncStorage.setItem(TRACKING_PREFERENCE_KEY, 'false');
+          await stopBackgroundTracking();
         }
         set({
           permissionStatus,
@@ -133,7 +225,17 @@ export const useMileageStore = create<MileageState>((set, get) => ({
         return false;
       }
 
-      // Permission granted - save preference and enable tracking
+      // Permission granted - start background tracking
+      const trackingStarted = await startBackgroundTracking();
+      if (!trackingStarted) {
+        set({
+          isLoading: false,
+          error: 'Failed to start background tracking. Please try again.',
+        });
+        return false;
+      }
+
+      // Save preference
       await AsyncStorage.setItem(TRACKING_PREFERENCE_KEY, 'true');
 
       set({
@@ -142,9 +244,6 @@ export const useMileageStore = create<MileageState>((set, get) => ({
         isLoading: false,
         error: null,
       });
-
-      // Note: Background task registration will be implemented in Story 6.2
-      // For now, we just set the state
 
       return true;
     } catch (error) {
@@ -160,13 +259,16 @@ export const useMileageStore = create<MileageState>((set, get) => ({
   // Disable tracking
   disableTracking: async () => {
     try {
-      await AsyncStorage.setItem(TRACKING_PREFERENCE_KEY, 'false');
+      // Stop background tracking
+      await stopBackgroundTracking();
 
-      // Note: Background task will be stopped in Story 6.2
-      // For now, we just update the state
+      // Save preference
+      await AsyncStorage.setItem(TRACKING_PREFERENCE_KEY, 'false');
 
       set({
         trackingEnabled: false,
+        tripState: 'IDLE',
+        activeTrip: null,
         error: null,
       });
     } catch (error) {
@@ -175,7 +277,69 @@ export const useMileageStore = create<MileageState>((set, get) => ({
     }
   },
 
+  // Update trip state (called by tracking service callback)
+  updateTripState: (state, activeTrip) => {
+    set({ tripState: state, activeTrip });
+  },
+
+  // Handle completed trip
+  onTripCompleted: async (trip) => {
+    console.log('Trip completed:', trip.id, 'Miles:', trip.miles.toFixed(2));
+
+    // Reload stats to reflect new trip
+    await get().loadTripStats();
+    await get().loadRecentTrips();
+  },
+
+  // Load trip statistics
+  loadTripStats: async () => {
+    try {
+      let stats = await getCachedTripStats();
+      if (!stats) {
+        stats = await calculateTripStats();
+      }
+
+      set({
+        todayMiles: stats.todayMiles,
+        weekMiles: stats.weekMiles,
+        monthMiles: stats.monthMiles,
+        yearMiles: stats.yearMiles,
+        todayTrips: stats.todayTrips,
+        weekTrips: stats.weekTrips,
+      });
+    } catch (error) {
+      console.error('Failed to load trip stats:', error);
+    }
+  },
+
+  // Load recent trips
+  loadRecentTrips: async () => {
+    try {
+      const trips = await getCompletedTrips();
+      // Get last 10 trips
+      set({ recentTrips: trips.slice(0, 10) });
+    } catch (error) {
+      console.error('Failed to load recent trips:', error);
+    }
+  },
+
+  // Force end current trip
+  endCurrentTrip: async () => {
+    try {
+      const completedTrip = await forceEndTrip();
+      if (completedTrip) {
+        set({ tripState: 'IDLE', activeTrip: null });
+        await get().onTripCompleted(completedTrip);
+      }
+    } catch (error) {
+      console.error('Failed to end trip:', error);
+    }
+  },
+
   setError: (error) => set({ error }),
 
   clearError: () => set({ error: null }),
 }));
+
+// Re-export types for convenience
+export type { TripState, ActiveTrip, CompletedTrip, TripStats };
