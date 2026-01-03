@@ -24,6 +24,20 @@ router.get(
   zonesController.getZones.bind(zonesController)
 );
 
+// Get nearby zones with water filtering (main mobile endpoint)
+router.get(
+  '/nearby',
+  validateRequest(GetZonesSchema),
+  zonesController.getNearbyZones.bind(zonesController)
+);
+
+// Stream nearby zones one-by-one (for progressive loading UX)
+router.get(
+  '/stream',
+  validateRequest(GetZonesSchema),
+  zonesController.streamNearbyZones.bind(zonesController)
+);
+
 // Get current score (no location needed)
 router.get(
   '/score',

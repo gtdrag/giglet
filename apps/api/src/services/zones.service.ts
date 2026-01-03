@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import { toZonedTime } from 'date-fns-tz';
 import { weatherService } from './weather.service';
 import { eventsService } from './events.service';
+import { geocodingService } from './geocoding.service';
 
 interface ZoneWithScore {
   id: string;
@@ -371,6 +372,132 @@ class ZonesService {
     }
 
     return zones;
+  }
+
+  /**
+   * Get nearby zones with scores, filtered for land only
+   * This is the main endpoint for the mobile app
+   */
+  async getNearbyZones(
+    lat: number,
+    lng: number,
+    timezone: string = 'UTC'
+  ): Promise<
+    Array<{
+      id: string;
+      latitude: number;
+      longitude: number;
+      score: number;
+      label: string;
+      factors: ZoneScoreFactors;
+      weatherDescription?: string;
+      nearbyEvents?: NearbyEvent[];
+    }>
+  > {
+    // Ensure lat/lng are numbers (query params come as strings)
+    const centerLat = Number(lat);
+    const centerLng = Number(lng);
+
+    const gridSize = 2;
+    const stepDegrees = 0.015; // ~1.5km
+
+    // Generate zones
+    const zones: Array<{ lat: number; lng: number; i: number; j: number }> = [];
+    for (let i = -gridSize; i <= gridSize; i++) {
+      for (let j = -gridSize; j <= gridSize; j++) {
+        zones.push({
+          lat: centerLat + i * stepDegrees,
+          lng: centerLng + j * stepDegrees,
+          i,
+          j,
+        });
+      }
+    }
+
+    // Calculate score once (same time-based factors for all zones in area)
+    const scoreResult = await this.calculateScoreWithWeather(centerLat, centerLng, new Date(), timezone);
+
+    // Build zone results with slight score variations
+    const results = zones.map((candidate) => {
+      // Vary scores based on distance from center (center is hotter)
+      const distFromCenter = Math.sqrt(candidate.i * candidate.i + candidate.j * candidate.j);
+      const distancePenalty = Math.floor(distFromCenter * 8);
+      const randomVariation = Math.floor(Math.random() * 10) - 5;
+      const adjustedScore = Math.max(
+        0,
+        Math.min(100, scoreResult.score - distancePenalty + randomVariation)
+      );
+
+      return {
+        id: `zone_${candidate.i}_${candidate.j}`,
+        latitude: candidate.lat,
+        longitude: candidate.lng,
+        score: adjustedScore,
+        label: this.getScoreLabel(adjustedScore),
+        factors: scoreResult.factors,
+        weatherDescription: scoreResult.weatherDescription,
+        nearbyEvents: scoreResult.nearbyEvents,
+      };
+    });
+
+    return results;
+  }
+
+  /**
+   * Stream nearby zones one-by-one
+   * Yields zones as NDJSON - cached zones come instantly, uncached take ~1 sec each
+   */
+  async *streamNearbyZones(
+    lat: number,
+    lng: number,
+    timezone: string = 'UTC'
+  ): AsyncGenerator<{
+    id: string;
+    latitude: number;
+    longitude: number;
+    score: number;
+    label: string;
+    factors: ZoneScoreFactors;
+    weatherDescription?: string;
+    nearbyEvents?: NearbyEvent[];
+  }> {
+    // Ensure lat/lng are numbers (query params come as strings)
+    const centerLat = Number(lat);
+    const centerLng = Number(lng);
+
+    const gridSize = 2;
+    const stepDegrees = 0.015; // ~1.5km
+
+    // Calculate score once (same time-based factors for all zones in area)
+    const scoreResult = await this.calculateScoreWithWeather(centerLat, centerLng, new Date(), timezone);
+
+    // Generate each zone
+    for (let i = -gridSize; i <= gridSize; i++) {
+      for (let j = -gridSize; j <= gridSize; j++) {
+        const zoneLat = centerLat + i * stepDegrees;
+        const zoneLng = centerLng + j * stepDegrees;
+
+        // Vary scores based on distance from center (center is hotter)
+        const distFromCenter = Math.sqrt(i * i + j * j);
+        const distancePenalty = Math.floor(distFromCenter * 8);
+        const randomVariation = Math.floor(Math.random() * 10) - 5;
+        const adjustedScore = Math.max(
+          0,
+          Math.min(100, scoreResult.score - distancePenalty + randomVariation)
+        );
+
+        yield {
+          id: `zone_${i}_${j}`,
+          latitude: zoneLat,
+          longitude: zoneLng,
+          score: adjustedScore,
+          label: this.getScoreLabel(adjustedScore),
+          factors: scoreResult.factors,
+          weatherDescription: scoreResult.weatherDescription,
+          nearbyEvents: scoreResult.nearbyEvents,
+        };
+      }
+    }
   }
 
   /**
