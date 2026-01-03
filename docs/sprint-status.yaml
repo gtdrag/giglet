@@ -100,8 +100,8 @@ development_status:
   # ============================================
   # Epic 6: Automatic Mileage Tracking (7 stories)
   # ============================================
-  epic-6: backlog
-  6-1-location-permission-and-tracking-enable: backlog
+  epic-6: contexted
+  6-1-location-permission-and-tracking-enable: done
   6-2-background-location-tracking: backlog
   6-3-trip-detection-and-logging: backlog
   6-4-mileage-dashboard-display: backlog
