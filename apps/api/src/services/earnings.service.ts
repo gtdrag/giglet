@@ -104,19 +104,24 @@ class EarningsService {
     period: EarningsPeriod = 'today',
     timezone: string = 'UTC',
     limit: number = 50,
-    offset: number = 0
+    offset: number = 0,
+    platform?: Platform
   ) {
     const { start, end } = this.getDateRange(period, timezone);
 
+    // Build where clause with optional platform filter
+    const where: Prisma.DeliveryWhereInput = {
+      userId,
+      deliveredAt: {
+        gte: start,
+        lt: end,
+      },
+      ...(platform && { platform }),
+    };
+
     const [deliveries, count] = await Promise.all([
       prisma.delivery.findMany({
-        where: {
-          userId,
-          deliveredAt: {
-            gte: start,
-            lt: end,
-          },
-        },
+        where,
         orderBy: {
           deliveredAt: 'desc',
         },
@@ -133,13 +138,7 @@ class EarningsService {
         },
       }),
       prisma.delivery.count({
-        where: {
-          userId,
-          deliveredAt: {
-            gte: start,
-            lt: end,
-          },
-        },
+        where,
       }),
     ]);
 

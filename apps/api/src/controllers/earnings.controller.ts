@@ -56,9 +56,16 @@ class EarningsController {
       }
 
       // Query params are validated and typed by middleware
-      const { period, timezone, limit, offset } = req.query as unknown as GetDeliveriesInput['query'];
+      const { period, timezone, limit, offset, platform } = req.query as unknown as GetDeliveriesInput['query'];
 
-      const result = await earningsService.getDeliveries(userId, period, timezone, limit, offset);
+      const result = await earningsService.getDeliveries(
+        userId,
+        period,
+        timezone,
+        limit,
+        offset,
+        platform as Platform | undefined
+      );
 
       res.json(successResponse(result));
     } catch (error) {

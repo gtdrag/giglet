@@ -79,7 +79,8 @@ export async function getDeliveries(
   period: EarningsPeriod = 'today',
   timezone?: string,
   limit: number = 50,
-  offset: number = 0
+  offset: number = 0,
+  platform?: Platform
 ): Promise<DeliveriesResponse> {
   try {
     const params = new URLSearchParams();
@@ -88,6 +89,9 @@ export async function getDeliveries(
     params.append('offset', offset.toString());
     if (timezone) {
       params.append('timezone', timezone);
+    }
+    if (platform) {
+      params.append('platform', platform);
     }
 
     const response = await api.get(`/earnings/deliveries?${params.toString()}`);

@@ -2,7 +2,7 @@
  * Deliveries Page - List all deliveries with manual indicator and edit capability
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import { getDeliveries, Delivery, EarningsPeriod } from '../src/services/earnings';
+import { getDeliveries, Delivery, EarningsPeriod, Platform } from '../src/services/earnings';
 import { ManualDeliveryModal } from '../src/components/ManualDeliveryModal';
 
 const PERIODS: { label: string; value: EarningsPeriod }[] = [
@@ -25,32 +25,73 @@ const PERIODS: { label: string; value: EarningsPeriod }[] = [
   { label: 'Year', value: 'year' },
 ];
 
+const PLATFORM_FILTERS: { label: string; value: Platform | undefined; color?: string }[] = [
+  { label: 'All', value: undefined },
+  { label: 'DoorDash', value: 'DOORDASH', color: '#FF3008' },
+  { label: 'Uber Eats', value: 'UBEREATS', color: '#06C167' },
+];
+
+const PAGE_SIZE = 20;
+
 export default function DeliveriesPage() {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<EarningsPeriod>('week');
+  const [platformFilter, setPlatformFilter] = useState<Platform | undefined>(undefined);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const fetchDeliveries = useCallback(async (showRefresh = false) => {
+  // Prevent duplicate fetches
+  const isFetchingRef = useRef(false);
+
+  const fetchDeliveries = useCallback(async (showRefresh = false, reset = true) => {
+    if (isFetchingRef.current) return;
+
     try {
+      isFetchingRef.current = true;
       if (showRefresh) setRefreshing(true);
-      else setLoading(true);
+      else if (reset) setLoading(true);
       setError(null);
 
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const result = await getDeliveries(period, timezone, 100, 0);
+      const result = await getDeliveries(period, timezone, PAGE_SIZE, 0, platformFilter);
       setDeliveries(result.deliveries);
+      setTotalCount(result.total);
+      setHasMore(result.deliveries.length < result.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load deliveries');
     } finally {
       setLoading(false);
       setRefreshing(false);
+      isFetchingRef.current = false;
     }
-  }, [period]);
+  }, [period, platformFilter]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || isFetchingRef.current) return;
+
+    try {
+      isFetchingRef.current = true;
+      setLoadingMore(true);
+
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const result = await getDeliveries(period, timezone, PAGE_SIZE, deliveries.length, platformFilter);
+
+      setDeliveries(prev => [...prev, ...result.deliveries]);
+      setHasMore(deliveries.length + result.deliveries.length < result.total);
+    } catch (err) {
+      // Silently fail on load more - user can retry by scrolling again
+    } finally {
+      setLoadingMore(false);
+      isFetchingRef.current = false;
+    }
+  }, [loadingMore, hasMore, period, platformFilter, deliveries.length]);
 
   useFocusEffect(
     useCallback(() => {
@@ -173,6 +214,33 @@ export default function DeliveriesPage() {
         ))}
       </View>
 
+      {/* Platform Filter */}
+      <View style={styles.platformFilterContainer}>
+        {PLATFORM_FILTERS.map((pf) => (
+          <Pressable
+            key={pf.label}
+            style={[
+              styles.platformFilterButton,
+              platformFilter === pf.value && styles.platformFilterButtonActive,
+              pf.color && platformFilter === pf.value && { borderColor: pf.color },
+            ]}
+            onPress={() => setPlatformFilter(pf.value)}
+          >
+            {pf.color && (
+              <View style={[styles.platformFilterDot, { backgroundColor: pf.color }]} />
+            )}
+            <Text
+              style={[
+                styles.platformFilterText,
+                platformFilter === pf.value && styles.platformFilterTextActive,
+              ]}
+            >
+              {pf.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
       {/* Content */}
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -193,6 +261,16 @@ export default function DeliveriesPage() {
           renderItem={renderDelivery}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={renderEmpty}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.loadingMoreContainer}>
+                <ActivityIndicator size="small" color="#22C55E" />
+                <Text style={styles.loadingMoreText}>Loading more...</Text>
+              </View>
+            ) : null
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -272,6 +350,40 @@ const styles = StyleSheet.create({
     color: '#71717A',
   },
   periodButtonTextActive: {
+    color: '#FAFAFA',
+  },
+  platformFilterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    gap: 8,
+  },
+  platformFilterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#18181B',
+    borderWidth: 1,
+    borderColor: '#27272A',
+    gap: 6,
+  },
+  platformFilterButtonActive: {
+    backgroundColor: '#27272A',
+    borderColor: '#3F3F46',
+  },
+  platformFilterDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  platformFilterText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#71717A',
+  },
+  platformFilterTextActive: {
     color: '#FAFAFA',
   },
   loadingContainer: {
@@ -399,6 +511,17 @@ const styles = StyleSheet.create({
   },
   emptySubtitle: {
     fontSize: 14,
+    color: '#71717A',
+  },
+  loadingMoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  loadingMoreText: {
+    fontSize: 13,
     color: '#71717A',
   },
 });
