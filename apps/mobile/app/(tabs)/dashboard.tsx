@@ -1,16 +1,83 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ManualDeliveryModal } from '../../src/components/ManualDeliveryModal';
+import { useEarningsStore } from '../../src/stores/earningsStore';
+
+// Platform colors for breakdown display
+const PLATFORM_COLORS = {
+  DOORDASH: '#FF3008',
+  UBEREATS: '#06C167',
+};
+
+const PLATFORM_NAMES = {
+  DOORDASH: 'DoorDash',
+  UBEREATS: 'Uber Eats',
+};
+
+// Format currency
+function formatCurrency(amount: number): string {
+  return `$${amount.toFixed(2)}`;
+}
 
 export default function DashboardPage() {
   const [showManualModal, setShowManualModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleManualDeliverySuccess = () => {
-    // TODO: Refresh earnings data when connected to real data
-  };
+  // Connect to earnings store
+  const {
+    summary,
+    isLoading,
+    error,
+    fetchSummary,
+    fetchDeliveries,
+    refresh,
+    clearError,
+    setPeriod,
+  } = useEarningsStore();
+
+  // Fetch data on mount - set period to 'week' for dashboard display
+  useEffect(() => {
+    // Set period to 'week' and this will trigger data fetch
+    setPeriod('week');
+  }, [setPeriod]);
+
+  // Handle manual delivery success - refresh data
+  const handleManualDeliverySuccess = useCallback(() => {
+    refresh();
+  }, [refresh]);
+
+  // Pull-to-refresh handler
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refresh]);
+
+  // Retry on error
+  const handleRetry = useCallback(() => {
+    clearError();
+    fetchSummary();
+    fetchDeliveries();
+  }, [clearError, fetchSummary, fetchDeliveries]);
+
+  // Calculate earnings display values
+  const totalEarnings = summary?.total ?? 0;
+  const hasEarnings = totalEarnings > 0;
+  const platformBreakdown = summary?.platformBreakdown ?? [];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -18,6 +85,14 @@ export default function DashboardPage() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor="#06B6D4"
+            colors={['#06B6D4']}
+          />
+        }
       >
         {/* Earnings Card */}
         <View style={styles.card}>
@@ -27,29 +102,92 @@ export default function DashboardPage() {
             </View>
             <Text style={styles.cardTitle}>Earnings</Text>
           </View>
-          <Text style={styles.earningsAmount}>$0.00</Text>
-          <Text style={styles.cardSubtext}>This Week</Text>
-          <View style={styles.periodSelector}>
-            <PeriodButton label="Week" active />
-            <PeriodButton label="Month" />
-            <PeriodButton label="Year" />
-          </View>
-          <View style={styles.earningsLinks}>
-            <Pressable
-              style={styles.cardLink}
-              onPress={() => router.push('/deliveries' as any)}
-            >
-              <Text style={styles.cardLinkText}>View all deliveries</Text>
-              <Ionicons name="chevron-forward" size={16} color="#06B6D4" />
-            </Pressable>
-            <Pressable
-              style={styles.addDeliveryButton}
-              onPress={() => setShowManualModal(true)}
-            >
-              <Ionicons name="add-circle" size={18} color="#22C55E" />
-              <Text style={styles.addDeliveryText}>Add Delivery</Text>
-            </Pressable>
-          </View>
+
+          {/* Loading State */}
+          {isLoading && !summary && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#06B6D4" />
+              <Text style={styles.loadingText}>Loading earnings...</Text>
+            </View>
+          )}
+
+          {/* Error State */}
+          {error && !isLoading && (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={24} color="#EF4444" />
+              <Text style={styles.errorText}>{error}</Text>
+              <Pressable style={styles.retryButton} onPress={handleRetry}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Earnings Display */}
+          {!isLoading && !error && (
+            <>
+              {/* Total Amount */}
+              <Text style={styles.earningsAmount}>{formatCurrency(totalEarnings)}</Text>
+              <Text style={styles.cardSubtext}>This Week</Text>
+
+              {/* Platform Breakdown */}
+              {hasEarnings && platformBreakdown.length > 0 && (
+                <View style={styles.breakdownContainer}>
+                  {platformBreakdown.map((platform) => (
+                    <View key={platform.platform} style={styles.breakdownRow}>
+                      <View style={styles.breakdownLeft}>
+                        <View
+                          style={[
+                            styles.platformDot,
+                            { backgroundColor: PLATFORM_COLORS[platform.platform] },
+                          ]}
+                        />
+                        <Text style={styles.breakdownPlatform}>
+                          {PLATFORM_NAMES[platform.platform]}
+                        </Text>
+                      </View>
+                      <Text style={styles.breakdownAmount}>
+                        {formatCurrency(platform.total)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Empty State */}
+              {!hasEarnings && (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>
+                    Import your earnings to see your weekly total
+                  </Text>
+                </View>
+              )}
+
+              {/* Period Selector (static for now - Story 4-2) */}
+              <View style={styles.periodSelector}>
+                <PeriodButton label="Week" active />
+                <PeriodButton label="Month" />
+                <PeriodButton label="Year" />
+              </View>
+
+              {/* Links */}
+              <View style={styles.earningsLinks}>
+                <Pressable
+                  style={styles.cardLink}
+                  onPress={() => router.push('/deliveries' as any)}
+                >
+                  <Text style={styles.cardLinkText}>View all deliveries</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#06B6D4" />
+                </Pressable>
+                <Pressable
+                  style={styles.addDeliveryButton}
+                  onPress={() => setShowManualModal(true)}
+                >
+                  <Ionicons name="add-circle" size={18} color="#22C55E" />
+                  <Text style={styles.addDeliveryText}>Add Delivery</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Import Card */}
@@ -60,7 +198,11 @@ export default function DashboardPage() {
             </View>
             <Text style={styles.cardTitle}>Import Earnings</Text>
           </View>
-          <Text style={styles.cardSubtext}>No imports yet</Text>
+          <Text style={styles.cardSubtext}>
+            {hasEarnings
+              ? `${summary?.deliveryCount ?? 0} deliveries imported`
+              : 'No imports yet'}
+          </Text>
           <View style={styles.importButtons}>
             <Pressable
               style={[styles.importButton, styles.importButtonDoordash]}
@@ -186,6 +328,84 @@ const styles = StyleSheet.create({
     color: '#22C55E',
     marginBottom: 4,
   },
+  // Loading state
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#71717A',
+  },
+  // Error state
+  errorContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#27272A',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#06B6D4',
+  },
+  // Platform breakdown
+  breakdownContainer: {
+    backgroundColor: '#27272A',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  breakdownLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  platformDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  breakdownPlatform: {
+    fontSize: 14,
+    color: '#A1A1AA',
+  },
+  breakdownAmount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FAFAFA',
+  },
+  // Empty state
+  emptyState: {
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#71717A',
+    textAlign: 'center',
+  },
+  // Period selector
   periodSelector: {
     flexDirection: 'row',
     backgroundColor: '#27272A',
@@ -210,6 +430,7 @@ const styles = StyleSheet.create({
   periodButtonTextActive: {
     color: '#FAFAFA',
   },
+  // Links
   earningsLinks: {
     flexDirection: 'row',
     justifyContent: 'space-between',

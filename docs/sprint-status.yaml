@@ -78,7 +78,7 @@ development_status:
   3-3-import-history-duplicate-detection: done
   3-4-manual-delivery-entry: done
   3-5-import-tutorial-deep-links: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: skipped
 
   # ============================================
   # Epic 4: Earnings Dashboard (6 stories)
@@ -87,8 +87,8 @@ development_status:
   # - Components: EarningsCard.tsx, PeriodSelector.tsx
   # - Backend: earnings.controller.ts
   # - Stories remain backlog pending Epic 3 data flow
-  epic-4: backlog
-  4-1-todays-earnings-display: backlog
+  epic-4: contexted
+  4-1-todays-earnings-display: done
   4-2-time-period-switching: backlog
   4-3-platform-earnings-breakdown: backlog
   4-4-individual-delivery-list: backlog
