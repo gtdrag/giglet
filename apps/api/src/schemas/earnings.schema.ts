@@ -74,3 +74,43 @@ export const DeleteImportBatchSchema = z.object({
 export type GetImportHistoryInput = z.infer<typeof GetImportHistorySchema>;
 export type GetImportBatchInput = z.infer<typeof GetImportBatchSchema>;
 export type DeleteImportBatchInput = z.infer<typeof DeleteImportBatchSchema>;
+
+// Manual Delivery CRUD schemas
+export const CreateDeliverySchema = z.object({
+  body: z.object({
+    platform: PlatformSchema,
+    deliveredAt: z.string().datetime({ message: 'Invalid datetime format. Use ISO 8601 format.' }).refine(
+      (date) => new Date(date) <= new Date(),
+      { message: 'Delivery date cannot be in the future' }
+    ),
+    basePay: z.number().min(0, 'Base pay must be positive').max(1000, 'Base pay cannot exceed 1000'),
+    tip: z.number().min(0, 'Tip must be positive').max(500, 'Tip cannot exceed 500'),
+    restaurantName: z.string().max(100, 'Restaurant name cannot exceed 100 characters').optional(),
+  }),
+});
+
+export const UpdateDeliverySchema = z.object({
+  params: z.object({
+    deliveryId: z.string().min(1, 'Delivery ID is required'),
+  }),
+  body: z.object({
+    platform: PlatformSchema.optional(),
+    deliveredAt: z.string().datetime({ message: 'Invalid datetime format. Use ISO 8601 format.' }).refine(
+      (date) => new Date(date) <= new Date(),
+      { message: 'Delivery date cannot be in the future' }
+    ).optional(),
+    basePay: z.number().min(0, 'Base pay must be positive').max(1000, 'Base pay cannot exceed 1000').optional(),
+    tip: z.number().min(0, 'Tip must be positive').max(500, 'Tip cannot exceed 500').optional(),
+    restaurantName: z.string().max(100, 'Restaurant name cannot exceed 100 characters').nullable().optional(),
+  }),
+});
+
+export const DeleteDeliverySchema = z.object({
+  params: z.object({
+    deliveryId: z.string().min(1, 'Delivery ID is required'),
+  }),
+});
+
+export type CreateDeliveryInput = z.infer<typeof CreateDeliverySchema>;
+export type UpdateDeliveryInput = z.infer<typeof UpdateDeliverySchema>;
+export type DeleteDeliveryInput = z.infer<typeof DeleteDeliverySchema>;

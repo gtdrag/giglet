@@ -256,6 +256,153 @@ class DeliveryService {
   }
 
   /**
+   * Create a manual delivery entry
+   */
+  async createManualDelivery(
+    userId: string,
+    input: {
+      platform: Platform;
+      deliveredAt: Date;
+      basePay: number;
+      tip: number;
+      restaurantName?: string;
+    }
+  ) {
+    const earnings = input.basePay + input.tip;
+
+    // Generate unique externalId for manual entries (UUID-based, not hash)
+    const externalId = `manual-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+    const delivery = await prisma.delivery.create({
+      data: {
+        userId,
+        externalId,
+        platform: input.platform,
+        deliveredAt: input.deliveredAt,
+        basePay: new Prisma.Decimal(input.basePay),
+        tip: new Prisma.Decimal(input.tip),
+        earnings: new Prisma.Decimal(earnings),
+        restaurantName: input.restaurantName || null,
+        isManual: true,
+        importBatchId: null,
+      },
+    });
+
+    logger.info('Created manual delivery', {
+      deliveryId: delivery.id,
+      userId,
+      platform: input.platform,
+    });
+
+    return {
+      id: delivery.id,
+      platform: delivery.platform,
+      deliveredAt: delivery.deliveredAt.toISOString(),
+      basePay: Number(delivery.basePay),
+      tip: Number(delivery.tip),
+      earnings: Number(delivery.earnings),
+      restaurantName: delivery.restaurantName,
+      isManual: delivery.isManual,
+    };
+  }
+
+  /**
+   * Update an existing delivery (imported or manual)
+   */
+  async updateDelivery(
+    deliveryId: string,
+    userId: string,
+    input: {
+      platform?: Platform;
+      deliveredAt?: Date;
+      basePay?: number;
+      tip?: number;
+      restaurantName?: string | null;
+    }
+  ) {
+    // Verify delivery belongs to user
+    const existing = await prisma.delivery.findFirst({
+      where: { id: deliveryId, userId },
+    });
+
+    if (!existing) {
+      return null;
+    }
+
+    // Calculate new earnings if basePay or tip changed
+    const newBasePay = input.basePay !== undefined ? input.basePay : Number(existing.basePay);
+    const newTip = input.tip !== undefined ? input.tip : Number(existing.tip);
+    const newEarnings = newBasePay + newTip;
+
+    const updateData: Prisma.DeliveryUpdateInput = {};
+
+    if (input.platform !== undefined) {
+      updateData.platform = input.platform;
+    }
+    if (input.deliveredAt !== undefined) {
+      updateData.deliveredAt = input.deliveredAt;
+    }
+    if (input.basePay !== undefined) {
+      updateData.basePay = new Prisma.Decimal(input.basePay);
+    }
+    if (input.tip !== undefined) {
+      updateData.tip = new Prisma.Decimal(input.tip);
+    }
+    if (input.basePay !== undefined || input.tip !== undefined) {
+      updateData.earnings = new Prisma.Decimal(newEarnings);
+    }
+    if (input.restaurantName !== undefined) {
+      updateData.restaurantName = input.restaurantName;
+    }
+
+    const delivery = await prisma.delivery.update({
+      where: { id: deliveryId },
+      data: updateData,
+    });
+
+    logger.info('Updated delivery', {
+      deliveryId: delivery.id,
+      userId,
+    });
+
+    return {
+      id: delivery.id,
+      platform: delivery.platform,
+      deliveredAt: delivery.deliveredAt.toISOString(),
+      basePay: Number(delivery.basePay),
+      tip: Number(delivery.tip),
+      earnings: Number(delivery.earnings),
+      restaurantName: delivery.restaurantName,
+      isManual: delivery.isManual,
+    };
+  }
+
+  /**
+   * Delete a delivery
+   */
+  async deleteDelivery(deliveryId: string, userId: string) {
+    // Verify delivery belongs to user
+    const existing = await prisma.delivery.findFirst({
+      where: { id: deliveryId, userId },
+    });
+
+    if (!existing) {
+      return null;
+    }
+
+    await prisma.delivery.delete({
+      where: { id: deliveryId },
+    });
+
+    logger.info('Deleted delivery', {
+      deliveryId,
+      userId,
+    });
+
+    return { deleted: true };
+  }
+
+  /**
    * Delete an import batch and all associated deliveries
    * Uses manual cascade since Prisma doesn't auto-cascade on importBatchId
    */

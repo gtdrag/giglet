@@ -12,6 +12,9 @@ import type {
   GetImportHistoryInput,
   GetImportBatchInput,
   DeleteImportBatchInput,
+  CreateDeliveryInput,
+  UpdateDeliveryInput,
+  DeleteDeliveryInput,
 } from '../schemas/earnings.schema';
 
 class EarningsController {
@@ -188,6 +191,92 @@ class EarningsController {
 
       if (!result) {
         throw errors.notFound('Import batch not found');
+      }
+
+      res.json(successResponse(result));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/v1/earnings/deliveries
+   * Create a manual delivery entry
+   */
+  async createDelivery(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) {
+        throw errors.unauthorized('User not authenticated');
+      }
+
+      const { platform, deliveredAt, basePay, tip, restaurantName } =
+        req.body as CreateDeliveryInput['body'];
+
+      const delivery = await deliveryService.createManualDelivery(userId, {
+        platform: platform as Platform,
+        deliveredAt: new Date(deliveredAt),
+        basePay,
+        tip,
+        restaurantName,
+      });
+
+      res.status(201).json(successResponse(delivery));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * PUT /api/v1/earnings/deliveries/:deliveryId
+   * Update an existing delivery
+   */
+  async updateDelivery(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) {
+        throw errors.unauthorized('User not authenticated');
+      }
+
+      const { deliveryId } = req.params as unknown as UpdateDeliveryInput['params'];
+      const { platform, deliveredAt, basePay, tip, restaurantName } =
+        req.body as UpdateDeliveryInput['body'];
+
+      const delivery = await deliveryService.updateDelivery(deliveryId, userId, {
+        platform: platform as Platform | undefined,
+        deliveredAt: deliveredAt ? new Date(deliveredAt) : undefined,
+        basePay,
+        tip,
+        restaurantName,
+      });
+
+      if (!delivery) {
+        throw errors.notFound('Delivery not found');
+      }
+
+      res.json(successResponse(delivery));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * DELETE /api/v1/earnings/deliveries/:deliveryId
+   * Delete a delivery
+   */
+  async deleteDelivery(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) {
+        throw errors.unauthorized('User not authenticated');
+      }
+
+      const { deliveryId } = req.params as unknown as DeleteDeliveryInput['params'];
+
+      const result = await deliveryService.deleteDelivery(deliveryId, userId);
+
+      if (!result) {
+        throw errors.notFound('Delivery not found');
       }
 
       res.json(successResponse(result));

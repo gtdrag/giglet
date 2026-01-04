@@ -76,7 +76,7 @@ development_status:
   3-1-csv-import-ui: done
   3-2-csv-parser-backend: done
   3-3-import-history-duplicate-detection: done
-  3-4-manual-delivery-entry: backlog
+  3-4-manual-delivery-entry: done
   3-5-import-tutorial-deep-links: backlog
   epic-3-retrospective: optional
 

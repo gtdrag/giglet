@@ -31,6 +31,7 @@ export interface Delivery {
   basePay: number;
   restaurantName: string | null;
   deliveredAt: string;
+  isManual?: boolean;
 }
 
 export interface DeliveriesResponse {
@@ -226,6 +227,71 @@ export async function deleteImportBatch(batchId: string): Promise<{ deletedDeliv
     const message =
       (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
         ?.message || 'Failed to delete import batch';
+    throw new EarningsError(message);
+  }
+}
+
+// Manual delivery input
+export interface CreateDeliveryInput {
+  platform: Platform;
+  deliveredAt: string; // ISO date string
+  basePay: number;
+  tip: number;
+  restaurantName?: string;
+}
+
+export interface UpdateDeliveryInput {
+  platform?: Platform;
+  deliveredAt?: string;
+  basePay?: number;
+  tip?: number;
+  restaurantName?: string | null;
+}
+
+/**
+ * Create a manual delivery entry
+ */
+export async function createDelivery(input: CreateDeliveryInput): Promise<Delivery> {
+  try {
+    const response = await api.post('/earnings/deliveries', input);
+    return response.data.data;
+  } catch (error) {
+    const message =
+      (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+        ?.message || 'Failed to create delivery';
+    throw new EarningsError(message);
+  }
+}
+
+/**
+ * Update an existing delivery
+ */
+export async function updateDelivery(
+  deliveryId: string,
+  input: UpdateDeliveryInput
+): Promise<Delivery> {
+  try {
+    const response = await api.put(`/earnings/deliveries/${deliveryId}`, input);
+    return response.data.data;
+  } catch (error) {
+    const message =
+      (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+        ?.message || 'Failed to update delivery';
+    throw new EarningsError(message);
+  }
+}
+
+/**
+ * Delete a delivery
+ */
+export async function deleteDelivery(deliveryId: string): Promise<{ deleted: boolean }> {
+  try {
+    const response = await api.delete(`/earnings/deliveries/${deliveryId}`);
+    return response.data.data;
+  } catch (error) {
+    const message =
+      (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+        ?.message || 'Failed to delete delivery';
     throw new EarningsError(message);
   }
 }

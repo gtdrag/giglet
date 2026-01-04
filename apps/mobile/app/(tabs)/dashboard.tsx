@@ -1,9 +1,17 @@
+import { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { ManualDeliveryModal } from '../../src/components/ManualDeliveryModal';
 
 export default function DashboardPage() {
+  const [showManualModal, setShowManualModal] = useState(false);
+
+  const handleManualDeliverySuccess = () => {
+    // TODO: Refresh earnings data when connected to real data
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -26,10 +34,22 @@ export default function DashboardPage() {
             <PeriodButton label="Month" />
             <PeriodButton label="Year" />
           </View>
-          <Pressable style={styles.cardLink}>
-            <Text style={styles.cardLinkText}>View all deliveries</Text>
-            <Ionicons name="chevron-forward" size={16} color="#06B6D4" />
-          </Pressable>
+          <View style={styles.earningsLinks}>
+            <Pressable
+              style={styles.cardLink}
+              onPress={() => router.push('/deliveries' as any)}
+            >
+              <Text style={styles.cardLinkText}>View all deliveries</Text>
+              <Ionicons name="chevron-forward" size={16} color="#06B6D4" />
+            </Pressable>
+            <Pressable
+              style={styles.addDeliveryButton}
+              onPress={() => setShowManualModal(true)}
+            >
+              <Ionicons name="add-circle" size={18} color="#22C55E" />
+              <Text style={styles.addDeliveryText}>Add Delivery</Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* Import Card */}
@@ -95,6 +115,12 @@ export default function DashboardPage() {
           <Text style={styles.cardSubtext}>Profile, notifications, account</Text>
         </Pressable>
       </ScrollView>
+
+      <ManualDeliveryModal
+        visible={showManualModal}
+        onClose={() => setShowManualModal(false)}
+        onSuccess={handleManualDeliverySuccess}
+      />
     </SafeAreaView>
   );
 }
@@ -184,6 +210,11 @@ const styles = StyleSheet.create({
   periodButtonTextActive: {
     color: '#FAFAFA',
   },
+  earningsLinks: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   cardLink: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -193,6 +224,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#06B6D4',
+  },
+  addDeliveryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  addDeliveryText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#22C55E',
   },
   cardLinkDisabled: {
     opacity: 0.7,

@@ -10,6 +10,9 @@ import {
   GetImportHistorySchema,
   GetImportBatchSchema,
   DeleteImportBatchSchema,
+  CreateDeliverySchema,
+  UpdateDeliverySchema,
+  DeleteDeliverySchema,
 } from '../schemas/earnings.schema';
 
 const router = Router();
@@ -94,6 +97,27 @@ router.delete(
   '/imports/:batchId',
   validateRequest(DeleteImportBatchSchema),
   earningsController.deleteImportBatch.bind(earningsController)
+);
+
+// Create manual delivery
+router.post(
+  '/deliveries',
+  validateRequest(CreateDeliverySchema),
+  earningsController.createDelivery.bind(earningsController)
+);
+
+// Update delivery
+router.put(
+  '/deliveries/:deliveryId',
+  validateRequest(UpdateDeliverySchema),
+  earningsController.updateDelivery.bind(earningsController)
+);
+
+// Delete delivery
+router.delete(
+  '/deliveries/:deliveryId',
+  validateRequest(DeleteDeliverySchema),
+  earningsController.deleteDelivery.bind(earningsController)
 );
 
 export default router;
