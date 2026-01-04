@@ -42,13 +42,26 @@ export default function DashboardPage() {
           </View>
           <Text style={styles.cardSubtext}>No imports yet</Text>
           <View style={styles.importButtons}>
-            <Pressable style={styles.importButton}>
+            <Pressable
+              style={[styles.importButton, styles.importButtonDoordash]}
+              onPress={() => router.push('/import?platform=DOORDASH' as any)}
+            >
               <Text style={styles.importButtonText}>DoorDash CSV</Text>
             </Pressable>
-            <Pressable style={styles.importButton}>
+            <Pressable
+              style={[styles.importButton, styles.importButtonUbereats]}
+              onPress={() => router.push('/import?platform=UBEREATS' as any)}
+            >
               <Text style={styles.importButtonText}>Uber Eats CSV</Text>
             </Pressable>
           </View>
+          <Pressable
+            style={styles.cardLinkHistory}
+            onPress={() => router.push('/import-history' as any)}
+          >
+            <Ionicons name="time-outline" size={16} color="#06B6D4" />
+            <Text style={styles.cardLinkText}>View Import History</Text>
+          </Pressable>
         </View>
 
         {/* Tax Export Card (Pro) */}
@@ -193,6 +206,12 @@ const styles = StyleSheet.create({
   importButtons: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 12,
+  },
+  cardLinkHistory: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   importButton: {
     flex: 1,
@@ -205,6 +224,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#FAFAFA',
+  },
+  importButtonDoordash: {
+    borderWidth: 1,
+    borderColor: '#FF3008',
+  },
+  importButtonUbereats: {
+    borderWidth: 1,
+    borderColor: '#06C167',
   },
   proBadge: {
     backgroundColor: '#422006',

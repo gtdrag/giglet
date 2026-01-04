@@ -39,3 +39,38 @@ export const GetDeliveriesSchema = z.object({
 
 export type GetEarningsSummaryInput = z.infer<typeof GetEarningsSummarySchema>;
 export type GetDeliveriesInput = z.infer<typeof GetDeliveriesSchema>;
+
+// Platform enum for import
+export const PlatformSchema = z.enum(['DOORDASH', 'UBEREATS']);
+
+// Import CSV schema - validates the body after multer processing
+export const ImportCSVSchema = z.object({
+  body: z.object({
+    platform: PlatformSchema,
+  }),
+});
+
+export type ImportCSVInput = z.infer<typeof ImportCSVSchema>;
+
+// Import History schemas
+export const GetImportHistorySchema = z.object({
+  query: z.object({
+    limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  }),
+});
+
+export const GetImportBatchSchema = z.object({
+  params: z.object({
+    batchId: z.string().min(1, 'Batch ID is required'),
+  }),
+});
+
+export const DeleteImportBatchSchema = z.object({
+  params: z.object({
+    batchId: z.string().min(1, 'Batch ID is required'),
+  }),
+});
+
+export type GetImportHistoryInput = z.infer<typeof GetImportHistorySchema>;
+export type GetImportBatchInput = z.infer<typeof GetImportBatchSchema>;
+export type DeleteImportBatchInput = z.infer<typeof DeleteImportBatchSchema>;

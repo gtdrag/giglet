@@ -71,10 +71,11 @@ development_status:
   # - Platform connection UI: doordash-connect.tsx, ubereats-connect.tsx
   # - Backend services: platform.controller.ts, doordash.service.ts
   # - Stories remain backlog until CSV import flow is complete
-  epic-3: backlog
-  3-1-csv-import-ui: backlog
-  3-2-csv-parser-backend: backlog
-  3-3-import-history-duplicate-detection: backlog
+  # Tech Spec: .bmad-ephemeral/stories/tech-spec-epic-3.md (2026-01-03)
+  epic-3: contexted
+  3-1-csv-import-ui: done
+  3-2-csv-parser-backend: done
+  3-3-import-history-duplicate-detection: done
   3-4-manual-delivery-entry: backlog
   3-5-import-tutorial-deep-links: backlog
   epic-3-retrospective: optional

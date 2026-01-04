@@ -1,8 +1,18 @@
 import { Request, Response, NextFunction } from 'express';
+import { Platform } from '@prisma/client';
 import { earningsService } from '../services/earnings.service';
+import { csvParserService } from '../services/csv-parser.service';
+import { deliveryService } from '../services/delivery.service';
 import { successResponse } from '../types/api.types';
-import { errors } from '../middleware/error.middleware';
-import type { GetEarningsSummaryInput, GetDeliveriesInput } from '../schemas/earnings.schema';
+import { errors, AppError } from '../middleware/error.middleware';
+import type {
+  GetEarningsSummaryInput,
+  GetDeliveriesInput,
+  ImportCSVInput,
+  GetImportHistoryInput,
+  GetImportBatchInput,
+  DeleteImportBatchInput,
+} from '../schemas/earnings.schema';
 
 class EarningsController {
   /**
@@ -46,6 +56,139 @@ class EarningsController {
       const { period, timezone, limit, offset } = req.query as unknown as GetDeliveriesInput['query'];
 
       const result = await earningsService.getDeliveries(userId, period, timezone, limit, offset);
+
+      res.json(successResponse(result));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/v1/earnings/import
+   * Import earnings from CSV file
+   *
+   * Expects multipart/form-data with:
+   * - file: CSV file (max 10MB)
+   * - platform: 'DOORDASH' | 'UBEREATS'
+   */
+  async importCSV(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) {
+        throw errors.unauthorized('User not authenticated');
+      }
+
+      // File is attached by multer middleware
+      const file = req.file;
+      if (!file) {
+        throw new AppError('VALIDATION_ERROR', 'No file uploaded', 400);
+      }
+
+      // Platform is validated by Zod schema
+      const { platform } = req.body as ImportCSVInput['body'];
+      if (!platform) {
+        throw new AppError('VALIDATION_ERROR', 'Platform is required', 400);
+      }
+
+      // Validate platform is a valid enum value
+      if (platform !== 'DOORDASH' && platform !== 'UBEREATS') {
+        throw new AppError('VALIDATION_ERROR', 'Platform must be DOORDASH or UBEREATS', 400);
+      }
+
+      // Parse the CSV file
+      let parseResult;
+      try {
+        parseResult = await csvParserService.parseCSV(file.buffer, platform as Platform);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to parse CSV file';
+        throw new AppError('PARSE_ERROR', message, 400);
+      }
+
+      // Create import batch
+      const batch = await deliveryService.createImportBatch({
+        userId,
+        platform: platform as Platform,
+        filename: file.originalname,
+      });
+
+      // Import deliveries
+      const result = await deliveryService.createManyFromImport(
+        userId,
+        batch.id,
+        parseResult.deliveries,
+        parseResult.skippedRows.length
+      );
+
+      res.json(successResponse(result));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/v1/earnings/imports
+   * Get user's import history
+   */
+  async getImportHistory(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) {
+        throw errors.unauthorized('User not authenticated');
+      }
+
+      const { limit } = req.query as unknown as GetImportHistoryInput['query'];
+
+      const imports = await deliveryService.getImportHistory(userId, limit);
+
+      res.json(successResponse({ imports }));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/v1/earnings/imports/:batchId
+   * Get import batch details with all deliveries
+   */
+  async getImportBatchDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) {
+        throw errors.unauthorized('User not authenticated');
+      }
+
+      const { batchId } = req.params as unknown as GetImportBatchInput['params'];
+
+      const result = await deliveryService.getImportBatchDetails(batchId, userId);
+
+      if (!result) {
+        throw errors.notFound('Import batch not found');
+      }
+
+      res.json(successResponse(result));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * DELETE /api/v1/earnings/imports/:batchId
+   * Delete import batch and all associated deliveries
+   */
+  async deleteImportBatch(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) {
+        throw errors.unauthorized('User not authenticated');
+      }
+
+      const { batchId } = req.params as unknown as DeleteImportBatchInput['params'];
+
+      const result = await deliveryService.deleteImportBatch(batchId, userId);
+
+      if (!result) {
+        throw errors.notFound('Import batch not found');
+      }
 
       res.json(successResponse(result));
     } catch (error) {

@@ -1,0 +1,220 @@
+<story-context id="3-3-import-history-duplicate-detection" v="1.0">
+  <metadata>
+    <epicId>3</epicId>
+    <storyId>3</storyId>
+    <title>Import History & Duplicate Detection</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2026-01-03</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/3-3-import-history-duplicate-detection.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user</asA>
+    <iWant>view my import history and undo previous imports if needed</iWant>
+    <soThat>I can manage my earnings data and fix mistakes</soThat>
+    <tasks>
+      <task id="1" acs="1,3,4">Add Import History API Endpoints
+        <subtask>Add GET /api/v1/earnings/imports endpoint to list user's import batches</subtask>
+        <subtask>Add GET /api/v1/earnings/imports/:batchId endpoint to get batch details with deliveries</subtask>
+        <subtask>Add DELETE /api/v1/earnings/imports/:batchId endpoint to delete batch and its deliveries</subtask>
+        <subtask>Add Zod schemas for import history endpoints</subtask>
+      </task>
+      <task id="2" acs="1,3,4">Update Earnings Controller
+        <subtask>Implement getImportHistory() method</subtask>
+        <subtask>Implement getImportBatchDetails() method</subtask>
+        <subtask>Implement deleteImportBatch() method with cascade delete</subtask>
+      </task>
+      <task id="3" acs="1,3">Create Import History UI
+        <subtask>Create ImportHistoryScreen component at app/import-history.tsx</subtask>
+        <subtask>Display list of import batches with platform icon, filename, date, counts</subtask>
+        <subtask>Add navigation to import history from earnings or settings screen</subtask>
+        <subtask>Implement pull-to-refresh</subtask>
+      </task>
+      <task id="4" acs="3">Create Import Batch Detail View
+        <subtask>Create ImportBatchDetailModal or screen</subtask>
+        <subtask>Display all deliveries from the selected batch</subtask>
+        <subtask>Show batch summary (total earnings, date range)</subtask>
+      </task>
+      <task id="5" acs="4">Implement Batch Deletion
+        <subtask>Add delete button/swipe action on import history list</subtask>
+        <subtask>Show confirmation dialog before deletion</subtask>
+        <subtask>Call DELETE endpoint and refresh list on success</subtask>
+        <subtask>Handle errors gracefully</subtask>
+      </task>
+      <task id="6" acs="2">Verify Duplicate Detection Display
+        <subtask>Confirm import.tsx success screen shows duplicatesSkipped count (already implemented)</subtask>
+        <subtask>Add visual indicator when duplicates were skipped</subtask>
+        <subtask>Add "View Import History" link on success screen</subtask>
+      </task>
+      <task id="7" acs="1,3,4">Add Unit and Integration Tests
+        <subtask>Test GET /earnings/imports returns correct batches for user</subtask>
+        <subtask>Test GET /earnings/imports/:batchId returns batch with deliveries</subtask>
+        <subtask>Test DELETE /earnings/imports/:batchId removes batch and deliveries</subtask>
+        <subtask>Test cascade delete behavior</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">Given I have previously imported CSV files, When I view my import history, Then I see a list of all imports with: platform, filename, date, imported count, duplicates skipped</criterion>
+    <criterion id="2">Given duplicate deliveries exist in a new CSV, When the import completes, Then I see "X new deliveries imported, Y duplicates skipped" in the success message</criterion>
+    <criterion id="3">Given I view my import history, When I tap on an import batch, Then I see details including all deliveries from that import</criterion>
+    <criterion id="4">Given I want to undo an import, When I delete an import batch, Then all deliveries from that batch are removed And I see a confirmation message</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-3.md</path>
+        <title>Epic 3 Technical Specification</title>
+        <section>3.3 Import History & Duplicate Detection</section>
+        <snippet>Covers deduplication strategy using composite key (platform + deliveredAt + earnings), ImportBatch tracking model, and import history API endpoints.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/3-3-import-history-duplicate-detection.md</path>
+        <title>Story 3.3 Definition</title>
+        <section>Full story with ACs and tasks</section>
+        <snippet>Import history screen, batch detail view, and batch deletion with cascade. API contract defined for 3 endpoints.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <file>
+        <path>apps/api/src/services/delivery.service.ts</path>
+        <kind>service</kind>
+        <symbol>DeliveryService</symbol>
+        <lines>1-188</lines>
+        <reason>Core service with existing getImportBatch() and getImportHistory() methods to extend with deleteImportBatch()</reason>
+      </file>
+      <file>
+        <path>apps/api/src/controllers/earnings.controller.ts</path>
+        <kind>controller</kind>
+        <symbol>EarningsController</symbol>
+        <lines>1-123</lines>
+        <reason>Extend with getImportHistory, getImportBatchDetails, and deleteImportBatch handlers</reason>
+      </file>
+      <file>
+        <path>apps/api/src/routes/earnings.routes.ts</path>
+        <kind>routes</kind>
+        <symbol>earnings routes</symbol>
+        <lines>1-73</lines>
+        <reason>Add GET /imports, GET /imports/:batchId, DELETE /imports/:batchId routes</reason>
+      </file>
+      <file>
+        <path>apps/api/src/schemas/earnings.schema.ts</path>
+        <kind>schema</kind>
+        <symbol>Zod schemas</symbol>
+        <lines>1-54</lines>
+        <reason>Add validation schemas for import history endpoints</reason>
+      </file>
+      <file>
+        <path>apps/api/prisma/schema.prisma</path>
+        <kind>database</kind>
+        <symbol>ImportBatch, Delivery</symbol>
+        <lines>112-150</lines>
+        <reason>ImportBatch model with deliveries relation, Delivery with importBatchId FK for cascade delete</reason>
+      </file>
+      <file>
+        <path>apps/mobile/app/import.tsx</path>
+        <kind>screen</kind>
+        <symbol>ImportScreen</symbol>
+        <lines>380-427</lines>
+        <reason>Success screen already shows duplicatesSkipped; add View Import History link</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/services/earnings.ts</path>
+        <kind>service</kind>
+        <symbol>earnings API</symbol>
+        <lines>1-159</lines>
+        <reason>Add getImportHistory(), getImportBatchDetails(), deleteImportBatch() API methods</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package>express</package>
+        <version>^4.x</version>
+      </node>
+      <node>
+        <package>@prisma/client</package>
+        <version>^5.x</version>
+      </node>
+      <node>
+        <package>zod</package>
+        <version>^3.x</version>
+      </node>
+      <node>
+        <package>expo-router</package>
+        <version>~4.x</version>
+      </node>
+      <node>
+        <package>react-native</package>
+        <version>0.76.x</version>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <interfaces>
+    <interface>
+      <name>GET /api/v1/earnings/imports</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/v1/earnings/imports -> { success: true, data: { imports: ImportBatch[] } }</signature>
+      <path>apps/api/src/routes/earnings.routes.ts</path>
+    </interface>
+    <interface>
+      <name>GET /api/v1/earnings/imports/:batchId</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/v1/earnings/imports/:batchId -> { success: true, data: { batch: ImportBatch, deliveries: Delivery[], summary: { totalEarnings, dateRange } } }</signature>
+      <path>apps/api/src/routes/earnings.routes.ts</path>
+    </interface>
+    <interface>
+      <name>DELETE /api/v1/earnings/imports/:batchId</name>
+      <kind>REST endpoint</kind>
+      <signature>DELETE /api/v1/earnings/imports/:batchId -> { success: true, data: { deletedDeliveries: number } }</signature>
+      <path>apps/api/src/routes/earnings.routes.ts</path>
+    </interface>
+    <interface>
+      <name>DeliveryService.getImportHistory</name>
+      <kind>method</kind>
+      <signature>getImportHistory(userId: string, limit?: number): Promise&lt;ImportBatch[]&gt;</signature>
+      <path>apps/api/src/services/delivery.service.ts</path>
+    </interface>
+    <interface>
+      <name>DeliveryService.getImportBatch</name>
+      <kind>method</kind>
+      <signature>getImportBatch(batchId: string, userId: string): Promise&lt;ImportBatch | null&gt;</signature>
+      <path>apps/api/src/services/delivery.service.ts</path>
+    </interface>
+  </interfaces>
+
+  <constraints>
+    <constraint type="pattern">Follow controller/service/route pattern from existing earnings endpoints</constraint>
+    <constraint type="pattern">Use Zod schemas for all endpoint validation</constraint>
+    <constraint type="pattern">Use successResponse() wrapper for all API responses</constraint>
+    <constraint type="security">Verify userId ownership before batch operations (prevent cross-user access)</constraint>
+    <constraint type="database">Manual cascade delete: delete deliveries first, then batch (Prisma doesn't auto-cascade on importBatchId)</constraint>
+    <constraint type="testing">Use vitest for backend tests following csv-parser.service.test.ts patterns</constraint>
+    <constraint type="ui">Dark theme: background #09090B, cards #18181B, borders #27272A, text #FAFAFA/#71717A</constraint>
+  </constraints>
+
+  <tests>
+    <standards>Backend uses vitest with separate test files per service/controller. Tests follow AAA pattern (Arrange-Act-Assert). Mock prisma client for unit tests. Integration tests use in-memory database or test fixtures.</standards>
+    <locations>
+      <location>apps/api/src/services/__tests__/</location>
+      <location>apps/api/src/controllers/__tests__/</location>
+      <location>apps/mobile/src/**/__tests__/</location>
+    </locations>
+    <ideas>
+      <idea ac="1">Test getImportHistory returns only batches for authenticated user, ordered by createdAt desc</idea>
+      <idea ac="1">Test getImportHistory respects limit parameter</idea>
+      <idea ac="3">Test getImportBatchDetails returns batch with all associated deliveries</idea>
+      <idea ac="3">Test getImportBatchDetails calculates correct summary (totalEarnings, dateRange)</idea>
+      <idea ac="3">Test getImportBatchDetails returns 404 for non-existent or other user's batch</idea>
+      <idea ac="4">Test deleteImportBatch removes all deliveries and the batch</idea>
+      <idea ac="4">Test deleteImportBatch returns 404 for other user's batch</idea>
+      <idea ac="4">Test deleteImportBatch is atomic (all or nothing)</idea>
+      <idea ac="2">Verify import.tsx success screen displays duplicatesSkipped when > 0</idea>
+    </ideas>
+  </tests>
+</story-context>

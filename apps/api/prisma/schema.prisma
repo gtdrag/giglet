@@ -32,6 +32,7 @@ model User {
   trips            Trip[]
   subscription     Subscription?
   preferences      UserPreferences?
+  importBatches    ImportBatch[]
 }
 
 enum AuthProvider {
@@ -108,14 +109,30 @@ enum PlatformStatus {
 
 // ============ EARNINGS ============
 
-model Delivery {
-  id                String          @id @default(cuid())
-  userId            String
-  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  platformAccountId String
-  platformAccount   PlatformAccount @relation(fields: [platformAccountId], references: [id], onDelete: Cascade)
+model ImportBatch {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform       Platform
+  filename       String
+  importedCount  Int
+  duplicateCount Int      @default(0)
+  errorCount     Int      @default(0)
+  createdAt      DateTime @default(now())
 
-  externalId String // Platform's delivery ID
+  deliveries Delivery[]
+
+  @@index([userId, createdAt])
+}
+
+model Delivery {
+  id                String           @id @default(cuid())
+  userId            String
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platformAccountId String?
+  platformAccount   PlatformAccount? @relation(fields: [platformAccountId], references: [id], onDelete: Cascade)
+
+  externalId String // Platform's delivery ID or generated hash
   platform   Platform
 
   earnings Decimal @db.Decimal(10, 2)
@@ -125,10 +142,15 @@ model Delivery {
   restaurantName String?
   deliveredAt    DateTime
 
+  isManual      Boolean      @default(false)
+  importBatchId String?
+  importBatch   ImportBatch? @relation(fields: [importBatchId], references: [id])
+
   createdAt DateTime @default(now())
 
-  @@unique([platform, externalId])
+  @@unique([userId, externalId])
   @@index([userId, deliveredAt])
+  @@index([userId, platform])
   @@index([platformAccountId])
 }
 
