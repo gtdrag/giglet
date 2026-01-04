@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ManualDeliveryModal } from '../../src/components/ManualDeliveryModal';
 import { useEarningsStore } from '../../src/stores/earningsStore';
+import type { EarningsPeriod } from '../../src/services/earnings';
 
 // Platform colors for breakdown display
 const PLATFORM_COLORS = {
@@ -24,6 +25,24 @@ const PLATFORM_NAMES = {
   DOORDASH: 'DoorDash',
   UBEREATS: 'Uber Eats',
 };
+
+// Period display labels
+const PERIOD_LABELS: Record<EarningsPeriod, string> = {
+  today: 'Today',
+  week: 'This Week',
+  month: 'This Month',
+  year: 'This Year',
+};
+
+// Format date range for display (e.g., "Jan 1 - Jan 4")
+function formatDateRange(start: string, end: string): string {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  const startStr = startDate.toLocaleDateString('en-US', options);
+  const endStr = endDate.toLocaleDateString('en-US', options);
+  return startStr === endStr ? startStr : `${startStr} - ${endStr}`;
+}
 
 // Format currency
 function formatCurrency(amount: number): string {
@@ -37,6 +56,7 @@ export default function DashboardPage() {
   // Connect to earnings store
   const {
     summary,
+    period,
     isLoading,
     error,
     fetchSummary,
@@ -45,6 +65,13 @@ export default function DashboardPage() {
     clearError,
     setPeriod,
   } = useEarningsStore();
+
+  // Handle period change
+  const handlePeriodChange = useCallback((newPeriod: EarningsPeriod) => {
+    if (newPeriod !== period) {
+      setPeriod(newPeriod);
+    }
+  }, [period, setPeriod]);
 
   // Fetch data on mount - set period to 'week' for dashboard display
   useEffect(() => {
@@ -127,7 +154,10 @@ export default function DashboardPage() {
             <>
               {/* Total Amount */}
               <Text style={styles.earningsAmount}>{formatCurrency(totalEarnings)}</Text>
-              <Text style={styles.cardSubtext}>This Week</Text>
+              <Text style={styles.cardSubtext}>
+                {PERIOD_LABELS[period]}
+                {summary?.dateRange && ` (${formatDateRange(summary.dateRange.start, summary.dateRange.end)})`}
+              </Text>
 
               {/* Platform Breakdown */}
               {hasEarnings && platformBreakdown.length > 0 && (
@@ -157,16 +187,35 @@ export default function DashboardPage() {
               {!hasEarnings && (
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyStateText}>
-                    Import your earnings to see your weekly total
+                    {period === 'today'
+                      ? 'No earnings today. Start delivering to see earnings!'
+                      : `Import your earnings to see your ${period === 'year' ? 'yearly' : period + 'ly'} total`}
                   </Text>
                 </View>
               )}
 
-              {/* Period Selector (static for now - Story 4-2) */}
+              {/* Period Selector */}
               <View style={styles.periodSelector}>
-                <PeriodButton label="Week" active />
-                <PeriodButton label="Month" />
-                <PeriodButton label="Year" />
+                <PeriodButton
+                  label="Today"
+                  active={period === 'today'}
+                  onPress={() => handlePeriodChange('today')}
+                />
+                <PeriodButton
+                  label="Week"
+                  active={period === 'week'}
+                  onPress={() => handlePeriodChange('week')}
+                />
+                <PeriodButton
+                  label="Month"
+                  active={period === 'month'}
+                  onPress={() => handlePeriodChange('month')}
+                />
+                <PeriodButton
+                  label="Year"
+                  active={period === 'year'}
+                  onPress={() => handlePeriodChange('year')}
+                />
               </View>
 
               {/* Links */}
@@ -267,9 +316,18 @@ export default function DashboardPage() {
   );
 }
 
-function PeriodButton({ label, active = false }: { label: string; active?: boolean }) {
+interface PeriodButtonProps {
+  label: string;
+  active?: boolean;
+  onPress?: () => void;
+}
+
+function PeriodButton({ label, active = false, onPress }: PeriodButtonProps) {
   return (
-    <Pressable style={[styles.periodButton, active && styles.periodButtonActive]}>
+    <Pressable
+      style={[styles.periodButton, active && styles.periodButtonActive]}
+      onPress={onPress}
+    >
       <Text style={[styles.periodButtonText, active && styles.periodButtonTextActive]}>
         {label}
       </Text>

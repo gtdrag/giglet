@@ -89,7 +89,7 @@ development_status:
   # - Stories remain backlog pending Epic 3 data flow
   epic-4: contexted
   4-1-todays-earnings-display: done
-  4-2-time-period-switching: backlog
+  4-2-time-period-switching: done
   4-3-platform-earnings-breakdown: backlog
   4-4-individual-delivery-list: backlog
   4-5-period-comparison: backlog
