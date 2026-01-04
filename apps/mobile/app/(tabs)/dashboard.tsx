@@ -12,19 +12,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ManualDeliveryModal } from '../../src/components/ManualDeliveryModal';
+import { PlatformBreakdownChart } from '../../src/components/PlatformBreakdownChart';
 import { useEarningsStore } from '../../src/stores/earningsStore';
 import type { EarningsPeriod } from '../../src/services/earnings';
-
-// Platform colors for breakdown display
-const PLATFORM_COLORS = {
-  DOORDASH: '#FF3008',
-  UBEREATS: '#06C167',
-};
-
-const PLATFORM_NAMES = {
-  DOORDASH: 'DoorDash',
-  UBEREATS: 'Uber Eats',
-};
 
 // Period display labels
 const PERIOD_LABELS: Record<EarningsPeriod, string> = {
@@ -159,27 +149,13 @@ export default function DashboardPage() {
                 {summary?.dateRange && ` (${formatDateRange(summary.dateRange.start, summary.dateRange.end)})`}
               </Text>
 
-              {/* Platform Breakdown */}
+              {/* Platform Breakdown Chart */}
               {hasEarnings && platformBreakdown.length > 0 && (
-                <View style={styles.breakdownContainer}>
-                  {platformBreakdown.map((platform) => (
-                    <View key={platform.platform} style={styles.breakdownRow}>
-                      <View style={styles.breakdownLeft}>
-                        <View
-                          style={[
-                            styles.platformDot,
-                            { backgroundColor: PLATFORM_COLORS[platform.platform] },
-                          ]}
-                        />
-                        <Text style={styles.breakdownPlatform}>
-                          {PLATFORM_NAMES[platform.platform]}
-                        </Text>
-                      </View>
-                      <Text style={styles.breakdownAmount}>
-                        {formatCurrency(platform.total)}
-                      </Text>
-                    </View>
-                  ))}
+                <View style={styles.chartContainer}>
+                  <PlatformBreakdownChart
+                    breakdown={platformBreakdown}
+                    total={totalEarnings}
+                  />
                 </View>
               )}
 
@@ -421,37 +397,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#06B6D4',
   },
-  // Platform breakdown
-  breakdownContainer: {
-    backgroundColor: '#27272A',
-    borderRadius: 10,
-    padding: 12,
+  // Platform breakdown chart
+  chartContainer: {
     marginBottom: 12,
-    gap: 8,
-  },
-  breakdownRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  breakdownLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  platformDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  breakdownPlatform: {
-    fontSize: 14,
-    color: '#A1A1AA',
-  },
-  breakdownAmount: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FAFAFA',
   },
   // Empty state
   emptyState: {
