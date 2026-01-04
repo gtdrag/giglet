@@ -1,0 +1,241 @@
+<story-context id="bmad/bmm/workflows/story-context" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>3</storyId>
+    <title>Trip Detection and Logging</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2026-01-03</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/6-3-trip-detection-and-logging.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user</asA>
+    <iWant>my trips automatically detected and logged with full details</iWant>
+    <soThat>I have accurate, reviewable mileage records for tax purposes</soThat>
+    <tasks>
+      <task id="1" ac="3">
+        <title>Implement Polyline Route Encoding</title>
+        <subtasks>
+          <subtask>Add Google Polyline encoding algorithm to distance.ts utility</subtask>
+          <subtask>Create encodePolyline(points: LocationPoint[]): string function</subtask>
+          <subtask>Create decodePolyline(encoded: string): Array of lat/lng function</subtask>
+          <subtask>Update CompletedTrip interface to store encodedRoute: string</subtask>
+          <subtask>Modify saveCompletedTrip() to encode route before saving</subtask>
+          <subtask>Add unit tests for polyline encoding/decoding</subtask>
+        </subtasks>
+      </task>
+      <task id="2" ac="3">
+        <title>Add Trip Detail View UI</title>
+        <subtasks>
+          <subtask>Create TripDetailModal.tsx component in apps/mobile/src/components/</subtask>
+          <subtask>Display trip header: date, duration, total miles</subtask>
+          <subtask>Show start and end times with timezone-aware formatting</subtask>
+          <subtask>Display start and end locations (reverse geocoded addresses)</subtask>
+          <subtask>Calculate and display average speed</subtask>
+          <subtask>Show IRS tax deduction estimate for this trip</subtask>
+          <subtask>Add Edit and Delete action buttons (functionality in Story 6.6)</subtask>
+        </subtasks>
+      </task>
+      <task id="3" ac="3">
+        <title>Add Route Map Visualization</title>
+        <subtasks>
+          <subtask>Add small map preview to TripDetailModal</subtask>
+          <subtask>Decode polyline and render as route line on map</subtask>
+          <subtask>Show start marker (green) and end marker (red)</subtask>
+          <subtask>Fit map bounds to route with padding</subtask>
+          <subtask>Use Mapbox Static Images API for lightweight preview</subtask>
+        </subtasks>
+      </task>
+      <task id="4" ac="3">
+        <title>Wire Trip List to Detail Modal</title>
+        <subtasks>
+          <subtask>Make trip list items in mileage.tsx tappable</subtask>
+          <subtask>Pass selected trip data to TripDetailModal</subtask>
+          <subtask>Add slide-up animation for modal</subtask>
+          <subtask>Handle modal close with back gesture</subtask>
+        </subtasks>
+      </task>
+      <task id="5" ac="1,2">
+        <title>Add Trip State Machine Unit Tests</title>
+        <subtasks>
+          <subtask>Create apps/mobile/src/services/__tests__/locationTracking.test.ts</subtask>
+          <subtask>Test IDLE to MOVING transition (speed greater than 6.7 m/s for 30s)</subtask>
+          <subtask>Test MOVING to PAUSED transition (stationary less than 2 m/s for 2 min)</subtask>
+          <subtask>Test PAUSED to MOVING transition (resume driving)</subtask>
+          <subtask>Test PAUSED to IDLE transition (stationary 5+ min, trip ends)</subtask>
+          <subtask>Test GPS drift filtering (speeds greater than 44.7 m/s rejected)</subtask>
+          <subtask>Test smoothed speed calculation from multiple points</subtask>
+        </subtasks>
+      </task>
+      <task id="6" ac="3">
+        <title>Add Distance Calculation Unit Tests</title>
+        <subtasks>
+          <subtask>Create apps/mobile/src/utils/__tests__/distance.test.ts</subtask>
+          <subtask>Test Haversine distance calculation accuracy</subtask>
+          <subtask>Test meters to miles conversion</subtask>
+          <subtask>Test polyline encoding/decoding round-trip</subtask>
+          <subtask>Test total distance calculation with drift filtering</subtask>
+        </subtasks>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">Given I start driving, When speed exceeds 15 mph for 30 seconds, Then a new trip begins recording And the trip state transitions to MOVING</criterion>
+    <criterion id="2">Given I am on a trip, When I stop for less than 5 minutes then resume driving, Then it is the same trip (not a new one) And the pause is handled seamlessly</criterion>
+    <criterion id="3">Given a trip ends, When saved, Then I can see: start time, end time, miles, and route points And the route is stored efficiently as encoded polyline</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Giglet Architecture Document</title>
+        <section>Mobile Application Structure</section>
+        <snippet>Expo SDK 52, TypeScript, Zustand for state management. Mobile app structure at /apps/mobile with file-based routing via Expo Router.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification</title>
+        <section>Detailed Design - Data Models</section>
+        <snippet>LocationPoint interface with lat, lng, timestamp, speed, accuracy. ActiveTrip with id, startedAt, points, currentMiles, state. Trip state machine: IDLE, MOVING, PAUSED transitions.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification</title>
+        <section>Story 6.3 Acceptance Criteria</section>
+        <snippet>AC7: Trip starts when speed exceeds 15 mph for 30 seconds. AC8: Quick stops less than 5 min continue same trip. AC9: Completed trip shows start time, end time, miles, route points.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/6-2-background-location-tracking.md</path>
+        <title>Story 6.2 Background Location Tracking</title>
+        <section>Dev Agent Record - Completion Notes</section>
+        <snippet>Created LocationTrackingService with trip state machine. Created distance.ts with Haversine formula. Created locationStorage.ts with AsyncStorage persistence. Extended mileageStore with trip state.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Giglet Epic Breakdown</title>
+        <section>Story 6.3 Technical Notes</section>
+        <snippet>Store route as encoded polyline (space efficient). Merge trips close together in time. Handle GPS drift filtering.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <file>
+        <path>apps/mobile/src/services/locationTracking.ts</path>
+        <kind>service</kind>
+        <symbol>LocationTrackingService</symbol>
+        <lines>1-396</lines>
+        <reason>Core trip state machine implementation. Contains IDLE/MOVING/PAUSED transitions, speed thresholds, trip save logic. EXTEND with polyline encoding on trip completion.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/utils/distance.ts</path>
+        <kind>utility</kind>
+        <symbol>calculateDistance, metersToMiles</symbol>
+        <lines>1-102</lines>
+        <reason>Haversine distance calculation. ADD polyline encode/decode functions here.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/utils/locationStorage.ts</path>
+        <kind>utility</kind>
+        <symbol>saveCompletedTrip, getCompletedTrips</symbol>
+        <lines>1-300</lines>
+        <reason>AsyncStorage persistence for trips. MODIFY saveCompletedTrip to encode route as polyline before saving.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/stores/mileageStore.ts</path>
+        <kind>store</kind>
+        <symbol>useMileageStore</symbol>
+        <lines>1-346</lines>
+        <reason>Zustand store for mileage state. Contains tripState, activeTrip, recentTrips. May need minor updates for trip detail modal state.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/app/(tabs)/mileage.tsx</path>
+        <kind>screen</kind>
+        <symbol>MileagePage</symbol>
+        <lines>1-700</lines>
+        <reason>Mileage tab UI. Contains recent trips list. MODIFY to make trips tappable and open TripDetailModal.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/components/ZoneDetailModal.tsx</path>
+        <kind>component</kind>
+        <symbol>ZoneDetailModal</symbol>
+        <lines>1-400</lines>
+        <reason>Reference implementation for modal pattern. Use similar structure for TripDetailModal: slide-up animation, close button, dark theme styling.</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <mobile>
+        <package name="expo" version="~54.0.30">Expo SDK for React Native</package>
+        <package name="expo-location" version="~19.0.8">Background location tracking</package>
+        <package name="expo-task-manager" version="~14.0.9">Background task registration</package>
+        <package name="@react-native-async-storage/async-storage" version="2.2.0">Local storage for trips</package>
+        <package name="react-native-maps" version="1.20.1">Map component for route visualization</package>
+        <package name="zustand" version="^5.0.9">State management</package>
+        <package name="typescript" version="~5.9.2">Type checking</package>
+      </mobile>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="pattern">Use Zustand store pattern matching existing mileageStore.ts</constraint>
+    <constraint type="pattern">Follow dark theme colors: #09090B (bg), #18181B (card), #27272A (border), #06B6D4 (cyan accent)</constraint>
+    <constraint type="pattern">Use AsyncStorage with @giglet/ key prefix for storage keys</constraint>
+    <constraint type="pattern">Modal components should match ZoneDetailModal pattern: slide-up animation, X close button, handle bar</constraint>
+    <constraint type="testing">Create __tests__ directories alongside source files</constraint>
+    <constraint type="testing">Use Jest for unit testing (Expo default test runner)</constraint>
+    <constraint type="architecture">All paths in context must be project-relative, not absolute</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>LocationPoint</name>
+      <kind>TypeScript interface</kind>
+      <signature>interface LocationPoint { latitude: number; longitude: number; timestamp: number; speed: number | null; accuracy: number; }</signature>
+      <path>apps/mobile/src/services/locationTracking.ts:32-38</path>
+    </interface>
+    <interface>
+      <name>CompletedTrip</name>
+      <kind>TypeScript interface</kind>
+      <signature>interface CompletedTrip { id: string; startedAt: string; endedAt: string; miles: number; startLat: number; startLng: number; endLat: number; endLng: number; pointCount: number; isManual: boolean; }</signature>
+      <path>apps/mobile/src/services/locationTracking.ts:53-64</path>
+    </interface>
+    <interface>
+      <name>TripState</name>
+      <kind>TypeScript type</kind>
+      <signature>type TripState = 'IDLE' | 'MOVING' | 'PAUSED'</signature>
+      <path>apps/mobile/src/services/locationTracking.ts:17</path>
+    </interface>
+    <interface>
+      <name>encodePolyline</name>
+      <kind>function (to be created)</kind>
+      <signature>function encodePolyline(points: LocationPoint[]): string</signature>
+      <path>apps/mobile/src/utils/distance.ts (NEW)</path>
+    </interface>
+    <interface>
+      <name>decodePolyline</name>
+      <kind>function (to be created)</kind>
+      <signature>function decodePolyline(encoded: string): Array&lt;{lat: number, lng: number}&gt;</signature>
+      <path>apps/mobile/src/utils/distance.ts (NEW)</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>Use Jest as the test runner (Expo default). Create unit tests in __tests__ directories adjacent to source files. Mock expo-location and expo-task-manager for location tracking tests. Use descriptive test names following pattern: "should [expected behavior] when [condition]".</standards>
+    <locations>
+      <location>apps/mobile/src/services/__tests__/</location>
+      <location>apps/mobile/src/utils/__tests__/</location>
+    </locations>
+    <ideas>
+      <idea ac="1">Test IDLE to MOVING: simulate 30+ seconds of speed above 6.7 m/s, verify trip starts</idea>
+      <idea ac="1">Test GPS drift filtering: inject speed above 44.7 m/s, verify point rejected</idea>
+      <idea ac="2">Test PAUSED to MOVING: simulate short stop then resume, verify same trip continues</idea>
+      <idea ac="2">Test PAUSED to IDLE: simulate 5+ min stationary, verify trip ends and saves</idea>
+      <idea ac="3">Test polyline encoding: encode known coordinates, verify output matches expected</idea>
+      <idea ac="3">Test polyline round-trip: encode then decode, verify coordinates match original</idea>
+      <idea ac="3">Test Haversine accuracy: calculate distance between known points, verify within 1% of expected</idea>
+    </ideas>
+  </tests>
+</story-context>

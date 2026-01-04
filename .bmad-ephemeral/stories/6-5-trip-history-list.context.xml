@@ -1,0 +1,194 @@
+<story-context id="6-5-trip-history-list" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>5</storyId>
+    <title>Trip History List</title>
+    <status>drafted</status>
+    <generatedAt>2026-01-03</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/6-5-trip-history-list.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>delivery driver</asA>
+    <iWant>to see a complete list of my tracked trips</iWant>
+    <soThat>I can review my driving history and verify my mileage records</soThat>
+    <tasks>
+      <task id="1" ac="1,2">Create Trip History Screen - new screen with FlatList, dark theme styling, empty state</task>
+      <task id="2" ac="4">Implement Trip List Pagination - getAllTrips(page, limit), infinite scroll, loading indicator</task>
+      <task id="3" ac="2">Add Trip Item Component - TripListItem.tsx with date/time/miles/tax formatting</task>
+      <task id="4" ac="3">Integrate with TripDetailModal - reuse existing modal from Story 6.3</task>
+      <task id="5" ac="1">Add "View All Trips" Navigation Link - from Mileage tab to trip-history screen</task>
+      <task id="6" ac="1,2,4">Add Unit Tests - pagination function, date/time formatting, list rendering</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">Given I have tracked trips, When I tap "View All Trips" from the Mileage tab, Then I see a chronological list of all trips (newest first) And the list is paginated for performance</criterion>
+    <criterion id="2">Given I view the trip list, When I see entries, Then each shows: date, start time, end time, miles, and tax deduction estimate</criterion>
+    <criterion id="3">Given I tap on a trip in the list, When the detail view opens, Then I see the TripDetailModal with full trip information (already implemented in Story 6.3)</criterion>
+    <criterion id="4">Given I have many trips, When I scroll the list, Then more trips load seamlessly (infinite scroll or pagination)</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification</title>
+        <section>Story 6.5 Acceptance Criteria</section>
+        <snippet>AC 13: chronological trip list (newest first). AC 14: each entry shows date, time, miles. APIs: GET /api/v1/mileage/trips with pagination.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Giglet Epic Breakdown</title>
+        <section>Story 6.5: Trip History List</section>
+        <snippet>User story for viewing tracked trips with chronological list, pagination for performance, and optional route visualization on tap.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/6-4-mileage-dashboard-display.md</path>
+        <title>Previous Story Reference</title>
+        <section>Dev Agent Record</section>
+        <snippet>Created tax.ts with formatTaxDeduction, MileageStatsCard component, locationStorage.ts exports getDateRanges. Dark theme colors: #09090B, #18181B, #27272A, #06B6D4.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <artifact>
+        <path>apps/mobile/src/utils/locationStorage.ts</path>
+        <kind>utility</kind>
+        <symbol>getCompletedTrips, getTripsInRange, TripStats</symbol>
+        <lines>160-185</lines>
+        <reason>Core trip retrieval functions - getCompletedTrips returns all trips (need pagination wrapper), getTripsInRange for date filtering</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/src/components/TripDetailModal.tsx</path>
+        <kind>component</kind>
+        <symbol>TripDetailModal, formatDate, formatTime, formatDuration</symbol>
+        <lines>35-69</lines>
+        <reason>Reusable modal for trip details - contains date/time formatting functions to reuse in list items</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/src/constants/tax.ts</path>
+        <kind>constants</kind>
+        <symbol>formatTaxDeduction, IRS_MILEAGE_RATE</symbol>
+        <lines>all</lines>
+        <reason>Tax deduction calculation - use formatTaxDeduction(miles) for consistent display</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/app/(tabs)/mileage.tsx</path>
+        <kind>screen</kind>
+        <symbol>MileagePage, recentTrips rendering</symbol>
+        <lines>varies</lines>
+        <reason>Current mileage tab - add "View All Trips" navigation link, reference recent trips list styling pattern</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/src/stores/mileageStore.ts</path>
+        <kind>store</kind>
+        <symbol>useMileageStore, recentTrips, loadRecentTrips</symbol>
+        <lines>varies</lines>
+        <reason>Zustand store for mileage state - provides recentTrips (limited to 10), may need full list access</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/src/services/locationTracking.ts</path>
+        <kind>service</kind>
+        <symbol>CompletedTrip type</symbol>
+        <lines>varies</lines>
+        <reason>CompletedTrip interface definition - fields: id, startedAt, endedAt, miles, startLat/Lng, endLat/Lng, encodedRoute, pointCount, isManual</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <node>
+        <package>expo-router</package>
+        <version>^6.0.21</version>
+        <purpose>File-based routing - create apps/mobile/app/trip-history.tsx</purpose>
+      </node>
+      <node>
+        <package>@react-native-async-storage/async-storage</package>
+        <version>2.2.0</version>
+        <purpose>Trip storage - getCompletedTrips reads from AsyncStorage</purpose>
+      </node>
+      <node>
+        <package>zustand</package>
+        <version>^5.0.9</version>
+        <purpose>State management - mileageStore for trip state</purpose>
+      </node>
+      <node>
+        <package>@expo/vector-icons</package>
+        <version>^15.0.3</version>
+        <purpose>Icons - Ionicons for UI elements</purpose>
+      </node>
+      <node>
+        <package>react-native</package>
+        <version>0.81.5</version>
+        <purpose>FlatList for efficient list rendering with onEndReached</purpose>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <interfaces>
+    <interface>
+      <name>getCompletedTrips</name>
+      <kind>async function</kind>
+      <signature>getCompletedTrips(): Promise&lt;CompletedTrip[]&gt;</signature>
+      <path>apps/mobile/src/utils/locationStorage.ts:160</path>
+    </interface>
+    <interface>
+      <name>CompletedTrip</name>
+      <kind>type interface</kind>
+      <signature>{ id: string; startedAt: string; endedAt: string; miles: number; startLat: number; startLng: number; endLat: number; endLng: number; encodedRoute?: string; pointCount: number; isManual?: boolean }</signature>
+      <path>apps/mobile/src/services/locationTracking.ts</path>
+    </interface>
+    <interface>
+      <name>formatTaxDeduction</name>
+      <kind>function</kind>
+      <signature>formatTaxDeduction(miles: number, rate?: number): string</signature>
+      <path>apps/mobile/src/constants/tax.ts:46</path>
+    </interface>
+    <interface>
+      <name>TripDetailModal</name>
+      <kind>React component</kind>
+      <signature>TripDetailModal({ visible: boolean, onClose: () =&gt; void, trip: CompletedTrip | null })</signature>
+      <path>apps/mobile/src/components/TripDetailModal.tsx:77</path>
+    </interface>
+    <interface>
+      <name>formatDate</name>
+      <kind>function</kind>
+      <signature>formatDate(dateStr: string): string // Returns "Monday, Jan 6"</signature>
+      <path>apps/mobile/src/components/TripDetailModal.tsx:35</path>
+    </interface>
+    <interface>
+      <name>formatTime</name>
+      <kind>function</kind>
+      <signature>formatTime(dateStr: string): string // Returns "2:30 PM"</signature>
+      <path>apps/mobile/src/components/TripDetailModal.tsx:45</path>
+    </interface>
+  </interfaces>
+
+  <constraints>
+    <constraint source="architecture">Use Expo Router file-based routing - new screens go in apps/mobile/app/ directory</constraint>
+    <constraint source="dev-notes">Dark theme colors: #09090B (bg), #18181B (card), #27272A (border), #06B6D4 (cyan accent)</constraint>
+    <constraint source="dev-notes">Week starts Monday (ISO week standard)</constraint>
+    <constraint source="tech-spec">Pagination: 20 trips per page for UI performance</constraint>
+    <constraint source="previous-story">Reuse existing components - TripDetailModal, formatTaxDeduction - do not recreate</constraint>
+    <constraint source="architecture">All trips stored locally in AsyncStorage - pagination is for UI performance, not network</constraint>
+    <constraint source="tech-spec">Show most recent trips first (newest first sort order)</constraint>
+  </constraints>
+
+  <tests>
+    <standards>Vitest is the testing framework. Tests are placed in __tests__ directories adjacent to source files. Use vi.mock() for mocking AsyncStorage. Follow existing patterns in locationStorage.test.ts and tax.test.ts. 79 tests currently passing across the mileage feature.</standards>
+    <locations>
+      <location>apps/mobile/src/utils/__tests__/</location>
+      <location>apps/mobile/src/constants/__tests__/</location>
+      <location>apps/mobile/src/services/__tests__/</location>
+    </locations>
+    <ideas>
+      <idea ac="1">Test getAllTrips pagination returns correct slices of trips array</idea>
+      <idea ac="2">Test TripListItem renders date, time, miles, tax deduction correctly</idea>
+      <idea ac="4">Test infinite scroll triggers next page load at correct threshold</idea>
+      <idea ac="4">Test end of list handled gracefully (no more data to load)</idea>
+      <idea ac="2">Test date formatting: "Mon, Jan 6" format with various edge cases</idea>
+      <idea ac="2">Test time formatting: "2:30 PM - 3:15 PM" range format</idea>
+    </ideas>
+  </tests>
+</story-context>

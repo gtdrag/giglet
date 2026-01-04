@@ -100,3 +100,122 @@ export const calculateTotalMiles = (
 ): number => {
   return metersToMiles(calculateTotalDistance(points));
 };
+
+/**
+ * Google Polyline Encoding Algorithm
+ * Encodes a series of coordinates into an ASCII string for efficient storage
+ * Reference: https://developers.google.com/maps/documentation/utilities/polylinealgorithm
+ */
+
+/**
+ * Encode a single coordinate value (lat or lng)
+ * @param value The coordinate value (already delta-encoded from previous point)
+ * @returns Encoded string
+ */
+const encodeValue = (value: number): string => {
+  // Round to 5 decimal places and convert to integer
+  let intValue = Math.round(value * 1e5);
+
+  // Left-shift by 1 bit
+  intValue = intValue << 1;
+
+  // If negative, invert
+  if (intValue < 0) {
+    intValue = ~intValue;
+  }
+
+  let encoded = '';
+
+  // Break into 5-bit chunks
+  while (intValue >= 0x20) {
+    // Get the lowest 5 bits, add 0x20 (to indicate more chunks follow), then add 63
+    encoded += String.fromCharCode((0x20 | (intValue & 0x1f)) + 63);
+    intValue >>= 5;
+  }
+
+  // Last chunk (no 0x20 flag)
+  encoded += String.fromCharCode(intValue + 63);
+
+  return encoded;
+};
+
+/**
+ * Decode a single coordinate value from the encoded string
+ * @param encoded The full encoded string
+ * @param index Current position in the string
+ * @returns [decodedValue, newIndex]
+ */
+const decodeValue = (encoded: string, index: number): [number, number] => {
+  let result = 0;
+  let shift = 0;
+  let byte: number;
+
+  do {
+    byte = encoded.charCodeAt(index++) - 63;
+    result |= (byte & 0x1f) << shift;
+    shift += 5;
+  } while (byte >= 0x20);
+
+  // Check if negative (least significant bit is 1)
+  const value = result & 1 ? ~(result >> 1) : result >> 1;
+
+  return [value / 1e5, index];
+};
+
+/**
+ * Encode an array of location points to a Google Polyline string
+ * @param points Array of points with latitude and longitude
+ * @returns Encoded polyline string
+ */
+export const encodePolyline = (
+  points: Array<{ latitude: number; longitude: number }>
+): string => {
+  if (points.length === 0) return '';
+
+  let encoded = '';
+  let prevLat = 0;
+  let prevLng = 0;
+
+  for (const point of points) {
+    // Delta encode from previous point
+    const deltaLat = point.latitude - prevLat;
+    const deltaLng = point.longitude - prevLng;
+
+    encoded += encodeValue(deltaLat);
+    encoded += encodeValue(deltaLng);
+
+    prevLat = point.latitude;
+    prevLng = point.longitude;
+  }
+
+  return encoded;
+};
+
+/**
+ * Decode a Google Polyline string back to an array of coordinates
+ * @param encoded The encoded polyline string
+ * @returns Array of {lat, lng} coordinates
+ */
+export const decodePolyline = (encoded: string): Array<{ lat: number; lng: number }> => {
+  if (!encoded || encoded.length === 0) return [];
+
+  const points: Array<{ lat: number; lng: number }> = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < encoded.length) {
+    const [deltaLat, newIndexLat] = decodeValue(encoded, index);
+    index = newIndexLat;
+
+    const [deltaLng, newIndexLng] = decodeValue(encoded, index);
+    index = newIndexLng;
+
+    lat += deltaLat;
+    lng += deltaLng;
+
+    points.push({ lat, lng });
+  }
+
+  return points;
+};

@@ -142,8 +142,11 @@ export default function MapPage() {
       setIsAnalyzing(false);
       setLastUpdated(Date.now());
     } catch (error) {
-      console.error('Failed to load zones:', error);
+      // Use warn instead of error to avoid red screen in dev mode
+      console.warn('Failed to load zones:', error instanceof Error ? error.message : error);
       setIsAnalyzing(false);
+      // Show empty zones - API may not be running
+      setZones([]);
     }
   };
 
@@ -194,7 +197,8 @@ export default function MapPage() {
       setZones(allZones);
       setLastUpdated(Date.now());
     } catch (error) {
-      console.error('Failed to refresh zones:', error);
+      // Use warn instead of error to avoid red screen in dev mode
+      console.warn('Failed to refresh zones:', error instanceof Error ? error.message : error);
     } finally {
       setIsRefreshing(false);
     }

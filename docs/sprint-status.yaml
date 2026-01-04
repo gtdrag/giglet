@@ -1,5 +1,6 @@
 # Sprint Status - Giglet
 # Generated: 2025-12-30
+# Last Updated: 2026-01-03 (Codebase audit sync)
 # Project: Giglet
 # Project Key: giglet
 # Tracking System: file-system
@@ -51,18 +52,25 @@ development_status:
   # ============================================
   # Epic 2: User Authentication (6 stories)
   # ============================================
-  epic-2: backlog
-  2-1-email-password-registration: backlog
-  2-2-email-password-login: backlog
-  2-3-apple-sign-in-ios: backlog
-  2-4-google-sign-in: backlog
-  2-5-password-reset-flow: backlog
-  2-6-onboarding-flow: backlog
+  # NOTE: Discovered via codebase audit 2026-01-03 - All auth features implemented
+  # Frontend: login.tsx, register.tsx, onboarding.tsx, auth.ts, authStore.ts
+  # Backend: auth.controller.ts, auth.service.ts, auth.routes.ts
+  epic-2: contexted
+  2-1-email-password-registration: done
+  2-2-email-password-login: done
+  2-3-apple-sign-in-ios: done
+  2-4-google-sign-in: done
+  2-5-password-reset-flow: done
+  2-6-onboarding-flow: done
   epic-2-retrospective: optional
 
   # ============================================
   # Epic 3: Earnings Import (5 stories) - CSV-based approach
   # ============================================
+  # NOTE: Partial infrastructure exists (codebase audit 2026-01-03):
+  # - Platform connection UI: doordash-connect.tsx, ubereats-connect.tsx
+  # - Backend services: platform.controller.ts, doordash.service.ts
+  # - Stories remain backlog until CSV import flow is complete
   epic-3: backlog
   3-1-csv-import-ui: backlog
   3-2-csv-parser-backend: backlog
@@ -74,6 +82,10 @@ development_status:
   # ============================================
   # Epic 4: Earnings Dashboard (6 stories)
   # ============================================
+  # NOTE: UI scaffolding exists (codebase audit 2026-01-03):
+  # - Components: EarningsCard.tsx, PeriodSelector.tsx
+  # - Backend: earnings.controller.ts
+  # - Stories remain backlog pending Epic 3 data flow
   epic-4: backlog
   4-1-todays-earnings-display: backlog
   4-2-time-period-switching: backlog
@@ -104,10 +116,10 @@ development_status:
   6-1-location-permission-and-tracking-enable: done
   6-2-background-location-tracking: done
   6-3-trip-detection-and-logging: done
-  6-4-mileage-dashboard-display: backlog
-  6-5-trip-history-list: backlog
-  6-6-manual-trip-entry-and-editing: backlog
-  6-7-delivery-trip-correlation: backlog
+  6-4-mileage-dashboard-display: done
+  6-5-trip-history-list: done
+  6-6-manual-trip-entry-and-editing: done
+  6-7-delivery-trip-correlation: done
   epic-6-retrospective: optional
 
   # ============================================

@@ -1,0 +1,224 @@
+<story-context id="bmad/bmm/workflows/story-context" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>4</storyId>
+    <title>Mileage Dashboard Display</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2026-01-03</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/6-4-mileage-dashboard-display.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>delivery driver</asA>
+    <iWant>to see my tracked mileage totals and tax deduction estimate</iWant>
+    <soThat>I understand my driving activity and potential tax benefit at a glance</soThat>
+    <tasks>
+      <task id="1" ac="1">
+        <title>Create Period Totals Aggregation Logic</title>
+        <subtasks>
+          <subtask>Add calculatePeriodMiles function to locationStorage.ts</subtask>
+          <subtask>Implement date range calculation for each period (respecting user timezone)</subtask>
+          <subtask>Filter completed trips by startedAt within period range</subtask>
+          <subtask>Sum miles from filtered trips</subtask>
+          <subtask>Add unit tests for period calculation edge cases</subtask>
+        </subtasks>
+        <note>EXISTING: TripStats interface and calculateTripStats() already exist in locationStorage.ts:190-268. Enhance or extend as needed.</note>
+      </task>
+      <task id="2" ac="2">
+        <title>Create Tax Deduction Calculator</title>
+        <subtasks>
+          <subtask>Add IRS_MILEAGE_RATE_2024 constant to new constants/tax.ts</subtask>
+          <subtask>Create calculateTaxDeduction function</subtask>
+          <subtask>Format deduction as USD currency</subtask>
+          <subtask>Add unit test verifying calculation accuracy</subtask>
+        </subtasks>
+        <note>EXISTING: IRS_MILEAGE_RATE = 0.67 already defined in mileage.tsx:9. Extract to shared constant.</note>
+      </task>
+      <task id="3" ac="1,2">
+        <title>Update Mileage Tab with Period Stats Cards</title>
+        <subtasks>
+          <subtask>Create MileageStatsCard.tsx component for period display</subtask>
+          <subtask>Display four stat cards: Today, This Week, This Month, This Year</subtask>
+          <subtask>Each card shows: period label, miles value, tax deduction estimate</subtask>
+          <subtask>Style cards with dark theme (#18181B background, #06B6D4 cyan accent)</subtask>
+          <subtask>Add loading state while calculating</subtask>
+        </subtasks>
+        <note>EXISTING: mileage.tsx:165-188 shows Today's Mileage card pattern. Extend for all periods.</note>
+      </task>
+      <task id="4" ac="1">
+        <title>Add Period Selector UI</title>
+        <subtasks>
+          <subtask>Create horizontal scrollable period selector (pill buttons)</subtask>
+          <subtask>Highlight selected period</subtask>
+          <subtask>Update main display when period changes</subtask>
+          <subtask>Persist selected period preference</subtask>
+        </subtasks>
+      </task>
+      <task id="5" ac="3">
+        <title>Add Tracking Disabled State</title>
+        <subtasks>
+          <subtask>Detect when autoMileageTracking is false in mileageStore</subtask>
+          <subtask>Display Enable Automatic Tracking card with explanation</subtask>
+          <subtask>Add Add Trip Manually button linking to manual entry</subtask>
+          <subtask>Show empty state illustration/icon</subtask>
+        </subtasks>
+        <note>EXISTING: mileage.tsx:271-350 already implements enable tracking and manual mode cards. May only need minor enhancements.</note>
+      </task>
+      <task id="6" ac="1,2">
+        <title>Integrate with Zustand Store</title>
+        <subtasks>
+          <subtask>Add periodTotals object to mileageStore</subtask>
+          <subtask>Add selectedPeriod state</subtask>
+          <subtask>Add refreshPeriodTotals action</subtask>
+          <subtask>Trigger refresh when recentTrips changes</subtask>
+        </subtasks>
+        <note>EXISTING: mileageStore.ts:74-79 already has todayMiles, weekMiles, monthMiles, yearMiles. Add selectedPeriod state.</note>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">Given I have tracked trips, When I view the Mileage tab, Then I see totals for: Today, This Week, This Month, This Year And totals update as new trips are logged</criterion>
+    <criterion id="2">Given I have trips, When I view the dashboard, Then I see IRS tax deduction estimate calculated as (total miles times $0.67) And the calculation uses the 2024 IRS standard mileage rate</criterion>
+    <criterion id="3">Given tracking is disabled, When I view the Mileage tab, Then I see a prompt to enable automatic tracking And I see an option for manual trip entry</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Giglet Architecture Document</title>
+        <section>Mobile Application Structure</section>
+        <snippet>Expo SDK 52, TypeScript, Zustand for state management. Mobile app at /apps/mobile with file-based routing via Expo Router.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification</title>
+        <section>Story 6.4 Acceptance Criteria</section>
+        <snippet>AC10: View totals (Today, Week, Month, Year). AC11: IRS tax deduction estimate (miles x $0.67). AC12: Prompt to enable tracking when disabled.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification</title>
+        <section>APIs - GET /api/v1/mileage</section>
+        <snippet>Returns totalMiles, taxDeduction, tripCount for period (day, week, month, year). Client-side aggregation for MVP.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/6-3-trip-detection-and-logging.md</path>
+        <title>Story 6.3 Trip Detection and Logging</title>
+        <section>Dev Agent Record - Completion Notes</section>
+        <snippet>Vitest setup complete with 47 tests. Dark theme: #09090B, #18181B, #27272A, #06B6D4. IRS rate $0.67/mile used in TripDetailModal.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <file>
+        <path>apps/mobile/src/utils/locationStorage.ts</path>
+        <kind>utility</kind>
+        <symbol>TripStats, calculateTripStats, getCachedTripStats, getDateRanges</symbol>
+        <lines>190-310</lines>
+        <reason>EXISTING period aggregation logic. TripStats has today/week/month/year miles and trips. calculateTripStats() computes from completed trips. getDateRanges() handles week starting Monday.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/stores/mileageStore.ts</path>
+        <kind>store</kind>
+        <symbol>useMileageStore, MileageState</symbol>
+        <lines>28-80</lines>
+        <reason>Zustand store with todayMiles, weekMiles, monthMiles, yearMiles state. loadTripStats() action exists. ADD selectedPeriod state and refreshPeriodTotals action.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/app/(tabs)/mileage.tsx</path>
+        <kind>screen</kind>
+        <symbol>MileagePage</symbol>
+        <lines>1-952</lines>
+        <reason>Main mileage tab UI. IRS_MILEAGE_RATE constant at line 9. Today's Mileage card at 165-188. Enable tracking card at 279-306. EXTEND with period selector and stats cards.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/services/locationTracking.ts</path>
+        <kind>service</kind>
+        <symbol>CompletedTrip, TripState, ActiveTrip</symbol>
+        <lines>52-65</lines>
+        <reason>CompletedTrip interface with miles, startedAt, endedAt fields used for aggregation.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/components/TripDetailModal.tsx</path>
+        <kind>component</kind>
+        <symbol>TripDetailModal</symbol>
+        <lines>1-400</lines>
+        <reason>Reference for modal styling and tax calculation pattern. Uses $0.67/mile rate.</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <mobile>
+        <package name="expo" version="~54.0.30">Expo SDK for React Native</package>
+        <package name="expo-location" version="~19.0.8">Background location tracking</package>
+        <package name="@react-native-async-storage/async-storage" version="2.2.0">Local storage for trips and preferences</package>
+        <package name="zustand" version="^5.0.9">State management</package>
+        <package name="typescript" version="~5.9.2">Type checking</package>
+        <package name="vitest" version="^4.0.16">Unit testing framework</package>
+      </mobile>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="pattern">Use Zustand store pattern matching existing mileageStore.ts</constraint>
+    <constraint type="pattern">Follow dark theme colors: #09090B (bg), #18181B (card), #27272A (border), #06B6D4 (cyan accent)</constraint>
+    <constraint type="pattern">Use AsyncStorage with @giglet/ key prefix for storage keys</constraint>
+    <constraint type="pattern">Extract shared constants to dedicated files in src/constants/</constraint>
+    <constraint type="testing">Create tests in __tests__ directories adjacent to source files</constraint>
+    <constraint type="testing">Use Vitest as test runner (already configured)</constraint>
+    <constraint type="performance">Dashboard load target: less than 1 second</constraint>
+    <constraint type="ux">Period stats should update reactively when new trips are logged</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>TripStats</name>
+      <kind>TypeScript interface</kind>
+      <signature>interface TripStats { todayMiles: number; weekMiles: number; monthMiles: number; yearMiles: number; todayTrips: number; weekTrips: number; monthTrips: number; yearTrips: number; lastUpdated: string; }</signature>
+      <path>apps/mobile/src/utils/locationStorage.ts:190-200</path>
+    </interface>
+    <interface>
+      <name>CompletedTrip</name>
+      <kind>TypeScript interface</kind>
+      <signature>interface CompletedTrip { id: string; startedAt: string; endedAt: string; miles: number; startLat: number; startLng: number; endLat: number; endLng: number; pointCount: number; isManual: boolean; encodedRoute?: string; }</signature>
+      <path>apps/mobile/src/services/locationTracking.ts:52-65</path>
+    </interface>
+    <interface>
+      <name>calculateTripStats</name>
+      <kind>async function</kind>
+      <signature>async function calculateTripStats(): Promise&lt;TripStats&gt;</signature>
+      <path>apps/mobile/src/utils/locationStorage.ts:226-268</path>
+    </interface>
+    <interface>
+      <name>getCachedTripStats</name>
+      <kind>async function</kind>
+      <signature>async function getCachedTripStats(): Promise&lt;TripStats | null&gt;</signature>
+      <path>apps/mobile/src/utils/locationStorage.ts:285-310</path>
+    </interface>
+    <interface>
+      <name>IRS_MILEAGE_RATE (to be extracted)</name>
+      <kind>constant</kind>
+      <signature>const IRS_MILEAGE_RATE = 0.67</signature>
+      <path>apps/mobile/app/(tabs)/mileage.tsx:9 (move to constants/tax.ts)</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>Use Vitest as the test runner (already configured in apps/mobile/vitest.config.ts). Create unit tests in __tests__ directories adjacent to source files. Use descriptive test names following pattern: "should [expected behavior] when [condition]". Mock AsyncStorage for storage tests.</standards>
+    <locations>
+      <location>apps/mobile/src/utils/__tests__/</location>
+      <location>apps/mobile/src/constants/__tests__/</location>
+    </locations>
+    <ideas>
+      <idea ac="1">Test period boundary calculation: verify week starts Monday, month start/end correct</idea>
+      <idea ac="1">Test calculateTripStats aggregation: create trips across periods, verify correct bucketing</idea>
+      <idea ac="1">Test date range edge cases: trips at midnight, trips spanning period boundaries</idea>
+      <idea ac="2">Test calculateTaxDeduction: verify 100 miles x $0.67 = $67.00</idea>
+      <idea ac="2">Test tax formatting: verify USD currency format ($XX.XX)</idea>
+      <idea ac="3">Test tracking disabled detection: mock trackingEnabled=false, verify CTA renders</idea>
+    </ideas>
+  </tests>
+</story-context>

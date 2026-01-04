@@ -8,7 +8,7 @@ import {
   loadTripState,
   saveTripState,
 } from '../utils/locationStorage';
-import { calculateDistance, metersToMiles } from '../utils/distance';
+import { calculateDistance, metersToMiles, encodePolyline } from '../utils/distance';
 
 // Background task name - must be unique and consistent
 export const BACKGROUND_LOCATION_TASK = 'giglet-background-location-task';
@@ -61,6 +61,7 @@ export interface CompletedTrip {
   endLng: number;
   pointCount: number;
   isManual: boolean;
+  encodedRoute?: string; // Google Polyline encoded route for efficient storage
 }
 
 // Trip state change callback type
@@ -252,6 +253,9 @@ const endCurrentTrip = async (): Promise<CompletedTrip | null> => {
   const firstPoint = activeTrip.points[0];
   const lastPoint = activeTrip.points[activeTrip.points.length - 1];
 
+  // Encode route as polyline for efficient storage
+  const encodedRoute = encodePolyline(activeTrip.points);
+
   const completedTrip: CompletedTrip = {
     id: activeTrip.id,
     startedAt: activeTrip.startedAt.toISOString(),
@@ -263,6 +267,7 @@ const endCurrentTrip = async (): Promise<CompletedTrip | null> => {
     endLng: lastPoint.longitude,
     pointCount: activeTrip.points.length,
     isManual: false,
+    encodedRoute,
   };
 
   await saveCompletedTrip(completedTrip);

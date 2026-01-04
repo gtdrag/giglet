@@ -168,6 +168,54 @@ export const getCompletedTrips = async (): Promise<CompletedTrip[]> => {
 };
 
 /**
+ * Pagination result interface
+ */
+export interface PaginatedTrips {
+  trips: CompletedTrip[];
+  hasMore: boolean;
+  totalCount: number;
+  page: number;
+  limit: number;
+}
+
+/**
+ * Get paginated completed trips
+ * @param page - Page number (1-indexed)
+ * @param limit - Number of trips per page (default 20)
+ * @returns Paginated trips with metadata
+ */
+export const getPaginatedTrips = async (
+  page: number = 1,
+  limit: number = 20
+): Promise<PaginatedTrips> => {
+  try {
+    const allTrips = await getCompletedTrips();
+    const totalCount = allTrips.length;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const trips = allTrips.slice(startIndex, endIndex);
+    const hasMore = endIndex < totalCount;
+
+    return {
+      trips,
+      hasMore,
+      totalCount,
+      page,
+      limit,
+    };
+  } catch (error) {
+    console.error('[LocationStorage] Failed to get paginated trips:', error);
+    return {
+      trips: [],
+      hasMore: false,
+      totalCount: 0,
+      page,
+      limit,
+    };
+  }
+};
+
+/**
  * Get completed trips for a date range
  */
 export const getTripsInRange = async (
@@ -199,7 +247,7 @@ export interface TripStats {
   lastUpdated: string;
 }
 
-const getDateRanges = (): {
+export const getDateRanges = (): {
   todayStart: Date;
   weekStart: Date;
   monthStart: Date;
@@ -323,6 +371,108 @@ export const deleteTrip = async (tripId: string): Promise<void> => {
     await AsyncStorage.setItem(STORAGE_KEYS.TRIP_STATS, JSON.stringify(stats));
   } catch (error) {
     console.error('[LocationStorage] Failed to delete trip:', error);
+    throw error;
+  }
+};
+
+/**
+ * Generate a unique trip ID
+ */
+const generateTripId = (): string => {
+  return `trip_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+/**
+ * Manual trip data input interface
+ */
+export interface ManualTripInput {
+  date: Date;
+  startTime: Date;
+  endTime: Date;
+  miles: number;
+}
+
+/**
+ * Save a manually entered trip
+ * Sets isManual: true and generates appropriate timestamps
+ */
+export const saveManualTrip = async (input: ManualTripInput): Promise<CompletedTrip> => {
+  try {
+    // Combine date with times to create full timestamps
+    const startedAt = new Date(input.date);
+    startedAt.setHours(input.startTime.getHours(), input.startTime.getMinutes(), 0, 0);
+
+    const endedAt = new Date(input.date);
+    endedAt.setHours(input.endTime.getHours(), input.endTime.getMinutes(), 0, 0);
+
+    // Create the manual trip
+    const trip: CompletedTrip = {
+      id: generateTripId(),
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      miles: input.miles,
+      // Manual trips don't have real coordinates - use 0,0 as placeholder
+      startLat: 0,
+      startLng: 0,
+      endLat: 0,
+      endLng: 0,
+      pointCount: 0,
+      isManual: true,
+      // No encoded route for manual trips
+    };
+
+    // Save using the existing saveCompletedTrip function
+    await saveCompletedTrip(trip);
+
+    return trip;
+  } catch (error) {
+    console.error('[LocationStorage] Failed to save manual trip:', error);
+    throw error;
+  }
+};
+
+/**
+ * Partial trip update interface
+ */
+export interface TripUpdate {
+  miles?: number;
+  startedAt?: string;
+  endedAt?: string;
+}
+
+/**
+ * Update an existing trip by ID
+ * Only updates the fields provided in the update object
+ */
+export const updateTrip = async (tripId: string, update: TripUpdate): Promise<CompletedTrip | null> => {
+  try {
+    const trips = await getCompletedTrips();
+    const tripIndex = trips.findIndex((t) => t.id === tripId);
+
+    if (tripIndex === -1) {
+      console.warn('[LocationStorage] Trip not found for update:', tripId);
+      return null;
+    }
+
+    // Update only the provided fields
+    const updatedTrip: CompletedTrip = {
+      ...trips[tripIndex],
+      ...(update.miles !== undefined && { miles: update.miles }),
+      ...(update.startedAt !== undefined && { startedAt: update.startedAt }),
+      ...(update.endedAt !== undefined && { endedAt: update.endedAt }),
+    };
+
+    trips[tripIndex] = updatedTrip;
+    await AsyncStorage.setItem(STORAGE_KEYS.COMPLETED_TRIPS, JSON.stringify(trips));
+
+    // Recalculate stats
+    const stats = await calculateTripStats();
+    await AsyncStorage.setItem(STORAGE_KEYS.TRIP_STATS, JSON.stringify(stats));
+
+    return updatedTrip;
+  } catch (error) {
+    console.error('[LocationStorage] Failed to update trip:', error);
+    throw error;
   }
 };
 

@@ -22,8 +22,10 @@ import {
 } from '../utils/locationStorage';
 
 const TRACKING_PREFERENCE_KEY = '@giglet/mileage_tracking_enabled';
+const SELECTED_PERIOD_KEY = '@giglet/selected_mileage_period';
 
 export type PermissionStatus = 'granted' | 'denied' | 'undetermined';
+export type PeriodType = 'day' | 'week' | 'month' | 'year';
 
 interface MileageState {
   // Permission and tracking state
@@ -44,6 +46,11 @@ interface MileageState {
   yearMiles: number;
   todayTrips: number;
   weekTrips: number;
+  monthTrips: number;
+  yearTrips: number;
+
+  // Period selection
+  selectedPeriod: PeriodType;
 
   // Actions
   checkPermission: () => Promise<void>;
@@ -60,6 +67,9 @@ interface MileageState {
   loadRecentTrips: () => Promise<void>;
   endCurrentTrip: () => Promise<void>;
   initializeTracking: () => Promise<void>;
+
+  // Period selection actions
+  setSelectedPeriod: (period: PeriodType) => Promise<void>;
 }
 
 export const useMileageStore = create<MileageState>((set, get) => ({
@@ -77,6 +87,9 @@ export const useMileageStore = create<MileageState>((set, get) => ({
   yearMiles: 0,
   todayTrips: 0,
   weekTrips: 0,
+  monthTrips: 0,
+  yearTrips: 0,
+  selectedPeriod: 'day',
 
   // Initialize tracking service and set up callbacks
   initializeTracking: async () => {
@@ -98,6 +111,12 @@ export const useMileageStore = create<MileageState>((set, get) => ({
         tripState: getCurrentTripState(),
         activeTrip: getActiveTripData(),
       });
+
+      // Load saved period preference
+      const savedPeriod = await AsyncStorage.getItem(SELECTED_PERIOD_KEY);
+      if (savedPeriod && ['day', 'week', 'month', 'year'].includes(savedPeriod)) {
+        set({ selectedPeriod: savedPeriod as PeriodType });
+      }
 
       // Load trip stats
       await get().loadTripStats();
@@ -306,6 +325,8 @@ export const useMileageStore = create<MileageState>((set, get) => ({
         yearMiles: stats.yearMiles,
         todayTrips: stats.todayTrips,
         weekTrips: stats.weekTrips,
+        monthTrips: stats.monthTrips,
+        yearTrips: stats.yearTrips,
       });
     } catch (error) {
       console.error('Failed to load trip stats:', error);
@@ -339,6 +360,18 @@ export const useMileageStore = create<MileageState>((set, get) => ({
   setError: (error) => set({ error }),
 
   clearError: () => set({ error: null }),
+
+  // Set selected period with persistence
+  setSelectedPeriod: async (period) => {
+    try {
+      await AsyncStorage.setItem(SELECTED_PERIOD_KEY, period);
+      set({ selectedPeriod: period });
+    } catch (error) {
+      console.error('Failed to save selected period:', error);
+      // Still update state even if save fails
+      set({ selectedPeriod: period });
+    }
+  },
 }));
 
 // Re-export types for convenience

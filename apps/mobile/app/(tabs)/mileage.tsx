@@ -1,13 +1,17 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Linking, ActivityIndicator, FlatList, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback } from 'react';
-import { useMileageStore } from '../../src/stores/mileageStore';
-
-// IRS mileage rate for 2024
-const IRS_MILEAGE_RATE = 0.67;
+import { useRouter } from 'expo-router';
+import { useMileageStore, type CompletedTrip, type PeriodType } from '../../src/stores/mileageStore';
+import { TripDetailModal } from '../../src/components/TripDetailModal';
+import { ManualTripModal, type ManualTripData } from '../../src/components/ManualTripModal';
+import { MileageStatsCardCompact } from '../../src/components/MileageStatsCard';
+import { IRS_MILEAGE_RATE, formatTaxDeduction } from '../../src/constants/tax';
+import { saveManualTrip, updateTrip, deleteTrip, type TripUpdate } from '../../src/utils/locationStorage';
 
 export default function MileagePage() {
+  const router = useRouter();
   const {
     trackingEnabled,
     permissionStatus,
@@ -16,17 +20,37 @@ export default function MileagePage() {
     activeTrip,
     todayMiles,
     weekMiles,
+    monthMiles,
+    yearMiles,
     todayTrips,
+    weekTrips,
+    monthTrips,
+    yearTrips,
+    selectedPeriod,
     recentTrips,
     checkPermission,
     enableTracking,
     loadTripStats,
     endCurrentTrip,
+    setSelectedPeriod,
   } = useMileageStore();
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [showManualModeInfo, setShowManualModeInfo] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [selectedTrip, setSelectedTrip] = useState<CompletedTrip | null>(null);
+  const [showTripDetail, setShowTripDetail] = useState(false);
+  const [showManualTripModal, setShowManualTripModal] = useState(false);
+
+  // Period stats data for display
+  const periodStats = {
+    day: { miles: todayMiles, trips: todayTrips },
+    week: { miles: weekMiles, trips: weekTrips },
+    month: { miles: monthMiles, trips: monthTrips },
+    year: { miles: yearMiles, trips: yearTrips },
+  };
+
+  const selectedStats = periodStats[selectedPeriod];
 
   // Check permission on mount and when tab is focused
   useEffect(() => {
@@ -64,14 +88,60 @@ export default function MileagePage() {
     endCurrentTrip();
   }, [endCurrentTrip]);
 
+  const handleTripPress = useCallback((trip: CompletedTrip) => {
+    setSelectedTrip(trip);
+    setShowTripDetail(true);
+  }, []);
+
+  const handleCloseTripDetail = useCallback(() => {
+    setShowTripDetail(false);
+    setSelectedTrip(null);
+  }, []);
+
+  const handleViewAllTrips = useCallback(() => {
+    router.push('/trip-history' as any);
+  }, [router]);
+
+  const handleAddManualTrip = useCallback(() => {
+    setShowManualTripModal(true);
+  }, []);
+
+  const handleSaveManualTrip = useCallback(async (tripData: ManualTripData) => {
+    await saveManualTrip(tripData);
+    // Reload stats to reflect the new trip
+    await loadTripStats();
+    setShowManualTripModal(false);
+    Alert.alert('Success', 'Trip added successfully!');
+  }, [loadTripStats]);
+
+  const handleEditTrip = useCallback(async (tripId: string, updates: TripUpdate) => {
+    await updateTrip(tripId, updates);
+    // Reload stats to reflect the changes
+    await loadTripStats();
+    // Update the selected trip if it's the one being edited
+    if (selectedTrip && selectedTrip.id === tripId) {
+      setSelectedTrip({
+        ...selectedTrip,
+        ...(updates.miles !== undefined && { miles: updates.miles }),
+        ...(updates.startedAt !== undefined && { startedAt: updates.startedAt }),
+        ...(updates.endedAt !== undefined && { endedAt: updates.endedAt }),
+      });
+    }
+    Alert.alert('Success', 'Trip updated successfully!');
+  }, [loadTripStats, selectedTrip]);
+
+  const handleDeleteTrip = useCallback(async (tripId: string) => {
+    await deleteTrip(tripId);
+    // Reload stats to reflect the deletion
+    await loadTripStats();
+    setShowTripDetail(false);
+    setSelectedTrip(null);
+    Alert.alert('Success', 'Trip deleted successfully!');
+  }, [loadTripStats]);
+
   // Format miles display
   const formatMiles = (miles: number): string => {
     return miles.toFixed(1);
-  };
-
-  // Format tax estimate
-  const formatTaxEstimate = (miles: number): string => {
-    return `$${(miles * IRS_MILEAGE_RATE).toFixed(2)}`;
   };
 
   // Format relative time
@@ -149,29 +219,44 @@ export default function MileagePage() {
             </View>
           )}
 
-          {/* Today's Mileage Card */}
+          {/* Period Stats Cards - Horizontal Scroll */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.periodCardsContainer}
+          >
+            {(['day', 'week', 'month', 'year'] as PeriodType[]).map((period) => (
+              <Pressable key={period} onPress={() => setSelectedPeriod(period)}>
+                <MileageStatsCardCompact
+                  period={period}
+                  miles={periodStats[period].miles}
+                  tripCount={periodStats[period].trips}
+                  isSelected={selectedPeriod === period}
+                  isLoading={isLoading}
+                />
+              </Pressable>
+            ))}
+          </ScrollView>
+
+          {/* Selected Period Summary Card */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardIconContainer}>
                 <Ionicons name="car" size={20} color="#06B6D4" />
               </View>
-              <Text style={styles.cardTitle}>Today's Mileage</Text>
+              <Text style={styles.cardTitle}>
+                {selectedPeriod === 'day' ? "Today's" :
+                 selectedPeriod === 'week' ? 'This Week\'s' :
+                 selectedPeriod === 'month' ? 'This Month\'s' : 'This Year\'s'} Mileage
+              </Text>
             </View>
-            <Text style={styles.mileageAmount}>{formatMiles(todayMiles)} mi</Text>
+            <Text style={styles.mileageAmount}>{formatMiles(selectedStats.miles)} mi</Text>
             <Text style={styles.taxEstimate}>
-              {formatTaxEstimate(todayMiles)} tax deduction estimate
+              {formatTaxDeduction(selectedStats.miles)} tax deduction estimate
             </Text>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{todayTrips}</Text>
-                <Text style={styles.statLabel}>trips today</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{formatMiles(weekMiles)}</Text>
-                <Text style={styles.statLabel}>mi this week</Text>
-              </View>
-            </View>
+            <Text style={styles.taxDisclaimer}>
+              Based on 2024 IRS rate of ${IRS_MILEAGE_RATE}/mile
+            </Text>
           </View>
 
           {/* Recent Trips Card */}
@@ -181,6 +266,9 @@ export default function MileagePage() {
                 <Ionicons name="list" size={20} color="#8B5CF6" />
               </View>
               <Text style={styles.cardTitle}>Recent Trips</Text>
+              <Pressable style={styles.addTripHeaderButton} onPress={handleAddManualTrip}>
+                <Ionicons name="add" size={20} color="#06B6D4" />
+              </Pressable>
             </View>
             {recentTrips.length === 0 ? (
               <>
@@ -190,22 +278,35 @@ export default function MileagePage() {
                 </Text>
               </>
             ) : (
-              <View style={styles.tripsList}>
-                {recentTrips.slice(0, 5).map((trip) => (
-                  <View key={trip.id} style={styles.tripItem}>
-                    <View style={styles.tripItemLeft}>
-                      <Ionicons name="location" size={16} color="#71717A" />
-                      <View>
-                        <Text style={styles.tripItemMiles}>{formatMiles(trip.miles)} mi</Text>
-                        <Text style={styles.tripItemTime}>
-                          {formatRelativeTime(trip.startedAt)}
-                        </Text>
+              <>
+                <View style={styles.tripsList}>
+                  {recentTrips.slice(0, 5).map((trip) => (
+                    <Pressable
+                      key={trip.id}
+                      style={styles.tripItem}
+                      onPress={() => handleTripPress(trip)}
+                    >
+                      <View style={styles.tripItemLeft}>
+                        <Ionicons name="location" size={16} color="#71717A" />
+                        <View>
+                          <Text style={styles.tripItemMiles}>{formatMiles(trip.miles)} mi</Text>
+                          <Text style={styles.tripItemTime}>
+                            {formatRelativeTime(trip.startedAt)}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                    <Text style={styles.tripItemTax}>{formatTaxEstimate(trip.miles)}</Text>
-                  </View>
-                ))}
-              </View>
+                      <View style={styles.tripItemRight}>
+                        <Text style={styles.tripItemTax}>{formatTaxDeduction(trip.miles)}</Text>
+                        <Ionicons name="chevron-forward" size={16} color="#52525B" />
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+                <Pressable style={styles.viewAllLink} onPress={handleViewAllTrips}>
+                  <Text style={styles.viewAllLinkText}>View All Trips</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#06B6D4" />
+                </Pressable>
+              </>
             )}
           </View>
         </ScrollView>
@@ -237,6 +338,22 @@ export default function MileagePage() {
             </View>
           </View>
         </Modal>
+
+        {/* Trip Detail Modal */}
+        <TripDetailModal
+          visible={showTripDetail}
+          onClose={handleCloseTripDetail}
+          trip={selectedTrip}
+          onEdit={handleEditTrip}
+          onDelete={handleDeleteTrip}
+        />
+
+        {/* Manual Trip Entry Modal */}
+        <ManualTripModal
+          visible={showManualTripModal}
+          onClose={() => setShowManualTripModal(false)}
+          onSave={handleSaveManualTrip}
+        />
       </SafeAreaView>
     );
   }
@@ -295,7 +412,7 @@ export default function MileagePage() {
                 <Ionicons name="settings" size={18} color="#06B6D4" />
                 <Text style={styles.settingsButtonText}>Open Settings</Text>
               </Pressable>
-              <Pressable style={styles.manualEntryButton}>
+              <Pressable style={styles.manualEntryButton} onPress={handleAddManualTrip}>
                 <Ionicons name="add-circle" size={18} color="#FAFAFA" />
                 <Text style={styles.manualEntryButtonText}>Add Trip Manually</Text>
               </Pressable>
@@ -315,7 +432,7 @@ export default function MileagePage() {
             <Text style={styles.cardSubtext}>
               You can also add trips manually without enabling location tracking
             </Text>
-            <Pressable style={styles.cardLink}>
+            <Pressable style={styles.cardLink} onPress={handleAddManualTrip}>
               <Text style={styles.cardLinkText}>Add trip manually</Text>
               <Ionicons name="chevron-forward" size={16} color="#06B6D4" />
             </Pressable>
@@ -437,6 +554,13 @@ export default function MileagePage() {
           </View>
         </View>
       </Modal>
+
+      {/* Manual Trip Entry Modal */}
+      <ManualTripModal
+        visible={showManualTripModal}
+        onClose={() => setShowManualTripModal(false)}
+        onSave={handleSaveManualTrip}
+      />
     </SafeAreaView>
   );
 }
@@ -484,6 +608,16 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
     gap: 16,
+  },
+  // Period Stats Cards
+  periodCardsContainer: {
+    paddingHorizontal: 0,
+    gap: 12,
+  },
+  taxDisclaimer: {
+    fontSize: 11,
+    color: '#52525B',
+    marginTop: 4,
   },
   // Enable Tracking Card
   enableCard: {
@@ -717,6 +851,14 @@ const styles = StyleSheet.create({
     color: '#FAFAFA',
     flex: 1,
   },
+  addTripHeaderButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#27272A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   cardSubtext: {
     fontSize: 14,
     color: '#71717A',
@@ -794,6 +936,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  tripItemRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   tripItemMiles: {
     fontSize: 15,
     fontWeight: '600',
@@ -807,6 +954,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#22C55E',
+  },
+  viewAllLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingTop: 16,
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#27272A',
+  },
+  viewAllLinkText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#06B6D4',
   },
   // Modal styles
   modalOverlay: {

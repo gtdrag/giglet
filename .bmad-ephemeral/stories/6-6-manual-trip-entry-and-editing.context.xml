@@ -1,0 +1,223 @@
+<story-context id="6-6-manual-trip-entry-and-editing" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>6</storyId>
+    <title>Manual Trip Entry and Editing</title>
+    <status>drafted</status>
+    <generatedAt>2026-01-03</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/6-6-manual-trip-entry-and-editing.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>delivery driver</asA>
+    <iWant>to manually add and edit trips</iWant>
+    <soThat>I can record mileage when automatic tracking is disabled or make corrections to existing trips</soThat>
+    <tasks>
+      <task id="1" ac="1">Create Manual Trip Entry Form - ManualTripModal.tsx with date picker, time inputs, miles input, validation</task>
+      <task id="2" ac="1">Implement Manual Trip Save Logic - saveManualTrip() function with isManual=true flag</task>
+      <task id="3" ac="1">Add "Add Trip" Entry Point - Wire existing buttons in mileage.tsx and trip-history.tsx</task>
+      <task id="4" ac="2">Add Edit Mode to TripDetailModal - Editable fields, Save/Cancel buttons</task>
+      <task id="5" ac="2">Implement Trip Update Logic - updateTrip(tripId, updates) function</task>
+      <task id="6" ac="3">Implement Trip Deletion - Confirmation dialog, reuse existing deleteTrip()</task>
+      <task id="7" ac="1,2,3">Add Unit Tests - saveManualTrip, updateTrip, form validation, stats recalculation</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">Given I tap "Add Trip" on Mileage tab, When I enter date and miles, Then trip saves with isManual=true</criterion>
+    <criterion id="2">Given I view a trip (in detail modal), When I tap Edit, Then I can modify miles or delete the trip</criterion>
+    <criterion id="3">Given I delete a trip, When I confirm deletion, Then the trip is removed from history and totals are recalculated</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification</title>
+        <section>Story 6.6 Acceptance Criteria</section>
+        <snippet>AC 15: Add Trip saves with isManual=true. AC 16: Edit modifies miles or deletes. AC 17: Delete removes from history and recalculates totals.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification</title>
+        <section>APIs and Interfaces</section>
+        <snippet>POST /api/v1/mileage/trips for creating trips. PUT /api/v1/mileage/trips/:id for updates. DELETE /api/v1/mileage/trips/:id for deletion.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification</title>
+        <section>Data Models - Trip</section>
+        <snippet>Trip model includes isManual: boolean field. Manual trips have startedAt, endedAt, miles, and isManual=true.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Giglet Architecture</title>
+        <section>Technology Stack</section>
+        <snippet>Mobile: Expo SDK 52, TypeScript, Zustand, Axios. Storage: expo-secure-store, AsyncStorage.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <file>
+        <path>apps/mobile/src/utils/locationStorage.ts</path>
+        <kind>utility</kind>
+        <symbol>deleteTrip</symbol>
+        <lines>363-375</lines>
+        <reason>Existing deleteTrip(tripId) function - reuse for trip deletion. Recalculates stats after deletion.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/utils/locationStorage.ts</path>
+        <kind>utility</kind>
+        <symbol>saveCompletedTrip</symbol>
+        <lines>135-155</lines>
+        <reason>Existing save function - reference for implementing saveManualTrip. Adds to front, updates stats.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/utils/locationStorage.ts</path>
+        <kind>utility</kind>
+        <symbol>calculateTripStats</symbol>
+        <lines>274-316</lines>
+        <reason>Stats calculation - must be called after add/edit/delete to recalculate totals.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/utils/locationStorage.ts</path>
+        <kind>utility</kind>
+        <symbol>getCompletedTrips</symbol>
+        <lines>160-168</lines>
+        <reason>Get all trips - needed for updateTrip to modify and re-save array.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/components/TripDetailModal.tsx</path>
+        <kind>component</kind>
+        <symbol>TripDetailModal</symbol>
+        <lines>77-331</lines>
+        <reason>Existing modal with Edit/Delete buttons (lines 312-321) - extend with edit mode functionality.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/components/TripDetailModal.tsx</path>
+        <kind>component</kind>
+        <symbol>editButton, deleteButton</symbol>
+        <lines>312-321</lines>
+        <reason>UI buttons already exist but have no onPress handlers - wire up for this story.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/app/(tabs)/mileage.tsx</path>
+        <kind>screen</kind>
+        <symbol>manualEntryButton</symbol>
+        <lines>363-366, 383-385</lines>
+        <reason>Existing "Add Trip Manually" buttons - wire to open ManualTripModal.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/services/locationTracking.ts</path>
+        <kind>types</kind>
+        <symbol>CompletedTrip</symbol>
+        <lines>53-65</lines>
+        <reason>Trip interface with isManual flag - manual trips must set isManual: true.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/utils/tripFormatting.ts</path>
+        <kind>utility</kind>
+        <symbol>formatTripDate, formatTripTime</symbol>
+        <lines>1-35</lines>
+        <reason>Formatting utilities from Story 6.5 - reuse for date/time display in form.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/components/TripListItem.tsx</path>
+        <kind>component</kind>
+        <symbol>TripListItem</symbol>
+        <lines>47-81</lines>
+        <reason>Reference for trip display styling - manual badge already shows for isManual trips.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/app/trip-history.tsx</path>
+        <kind>screen</kind>
+        <symbol>TripHistoryScreen</symbol>
+        <lines>24-173</lines>
+        <reason>Trip history screen - consider adding "Add Trip" button to header.</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package>@react-native-async-storage/async-storage</package>
+        <purpose>Local trip storage - all CRUD operations use this</purpose>
+      </node>
+      <node>
+        <package>expo-location</package>
+        <purpose>Optional: Get current location for manual trip coordinates</purpose>
+      </node>
+      <node>
+        <package>@react-native-community/datetimepicker</package>
+        <purpose>Consider adding for native date/time picker in ManualTripModal</purpose>
+        <note>Not currently installed - evaluate vs. simple TextInput approach</note>
+      </node>
+      <node>
+        <package>uuid</package>
+        <purpose>Generate unique trip IDs - already used in locationTracking.ts</purpose>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <interfaces>
+    <interface>
+      <name>CompletedTrip</name>
+      <kind>TypeScript interface</kind>
+      <signature>{ id: string; startedAt: string; endedAt: string; miles: number; startLat: number; startLng: number; endLat: number; endLng: number; pointCount: number; isManual: boolean; encodedRoute?: string; }</signature>
+      <path>apps/mobile/src/services/locationTracking.ts:53-65</path>
+    </interface>
+    <interface>
+      <name>deleteTrip</name>
+      <kind>function</kind>
+      <signature>deleteTrip(tripId: string): Promise&lt;void&gt;</signature>
+      <path>apps/mobile/src/utils/locationStorage.ts:363</path>
+    </interface>
+    <interface>
+      <name>saveCompletedTrip</name>
+      <kind>function</kind>
+      <signature>saveCompletedTrip(trip: CompletedTrip): Promise&lt;void&gt;</signature>
+      <path>apps/mobile/src/utils/locationStorage.ts:135</path>
+    </interface>
+    <interface>
+      <name>calculateTripStats</name>
+      <kind>function</kind>
+      <signature>calculateTripStats(): Promise&lt;TripStats&gt;</signature>
+      <path>apps/mobile/src/utils/locationStorage.ts:274</path>
+    </interface>
+    <interface>
+      <name>getCompletedTrips</name>
+      <kind>function</kind>
+      <signature>getCompletedTrips(): Promise&lt;CompletedTrip[]&gt;</signature>
+      <path>apps/mobile/src/utils/locationStorage.ts:160</path>
+    </interface>
+  </interfaces>
+
+  <constraints>
+    <constraint>Manual trips must set isManual: true to display the "Manual" badge in TripListItem</constraint>
+    <constraint>Trip IDs must be unique - use uuid.v4() as done in locationTracking.ts</constraint>
+    <constraint>After any trip modification (add/edit/delete), call calculateTripStats() and save to update dashboard totals</constraint>
+    <constraint>Dark theme colors: #09090B (bg), #18181B (card), #27272A (border), #06B6D4 (cyan), #22C55E (green), #EF4444 (red for delete)</constraint>
+    <constraint>Date/time inputs should default sensibly: date=today, startTime=now-30min, endTime=now</constraint>
+    <constraint>Miles validation: must be positive number, max 1000 miles per trip</constraint>
+    <constraint>End time must be after start time</constraint>
+    <constraint>Delete requires confirmation dialog - action cannot be undone</constraint>
+    <constraint>Use Vitest for unit tests - follow patterns in locationStorage.test.ts</constraint>
+  </constraints>
+
+  <tests>
+    <standards>Vitest test framework with vi.mock for AsyncStorage. Tests in src/utils/__tests__/ and src/components/__tests__/. Use vi.useFakeTimers() for date-related tests. 97 tests currently passing - maintain coverage.</standards>
+    <locations>
+      <location>apps/mobile/src/utils/__tests__/locationStorage.test.ts</location>
+      <location>apps/mobile/src/utils/__tests__/tripFormatting.test.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="1">Test saveManualTrip() sets isManual=true, generates unique ID, adds trip to storage</idea>
+      <idea ac="1">Test saveManualTrip() calls calculateTripStats() after save</idea>
+      <idea ac="1">Test form validation rejects negative miles, end time before start time</idea>
+      <idea ac="2">Test updateTrip() modifies only specified fields, preserves others</idea>
+      <idea ac="2">Test updateTrip() recalculates stats after modification</idea>
+      <idea ac="3">Test deleteTrip() removes trip from storage (already exists - verify stats recalc)</idea>
+      <idea ac="3">Test stats recalculation after delete reflects removed trip</idea>
+    </ideas>
+  </tests>
+</story-context>
