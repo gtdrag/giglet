@@ -9,6 +9,7 @@ import type {
   GetEarningsSummaryInput,
   GetDeliveriesInput,
   GetCompareInput,
+  GetHourlyRateInput,
   ImportCSVInput,
   GetImportHistoryInput,
   GetImportBatchInput,
@@ -88,6 +89,27 @@ class EarningsController {
       const { period, timezone } = req.query as unknown as GetCompareInput['query'];
 
       const result = await earningsService.getComparison(userId, period, timezone);
+
+      res.json(successResponse(result));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/v1/earnings/hourly-rate
+   * Get hourly rate calculated from earnings and trip hours
+   */
+  async getHourlyRate(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) {
+        throw errors.unauthorized('User not authenticated');
+      }
+
+      const { period, timezone } = req.query as unknown as GetHourlyRateInput['query'];
+
+      const result = await earningsService.getHourlyRate(userId, period, timezone);
 
       res.json(successResponse(result));
     } catch (error) {

@@ -41,6 +41,14 @@ export interface DeliveriesResponse {
   offset: number;
 }
 
+export interface HourlyRateData {
+  totalEarnings: number;
+  totalHours: number;
+  hourlyRate: number;
+  periodLabel: string;
+  hasData: boolean;
+}
+
 export interface PeriodComparison {
   current: {
     total: number;
@@ -149,6 +157,30 @@ export async function getComparison(
     const message =
       (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
         ?.message || 'Failed to fetch comparison';
+    throw new EarningsError(message);
+  }
+}
+
+/**
+ * Get hourly rate data for a period
+ */
+export async function getHourlyRate(
+  period: EarningsPeriod = 'week',
+  timezone?: string
+): Promise<HourlyRateData> {
+  try {
+    const params = new URLSearchParams();
+    params.append('period', period);
+    if (timezone) {
+      params.append('timezone', timezone);
+    }
+
+    const response = await api.get(`/earnings/hourly-rate?${params.toString()}`);
+    return response.data.data;
+  } catch (error) {
+    const message =
+      (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+        ?.message || 'Failed to fetch hourly rate';
     throw new EarningsError(message);
   }
 }

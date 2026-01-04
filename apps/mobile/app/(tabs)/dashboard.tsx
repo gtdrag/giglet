@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { ManualDeliveryModal } from '../../src/components/ManualDeliveryModal';
 import { PlatformBreakdownChart } from '../../src/components/PlatformBreakdownChart';
 import { PeriodComparisonCard } from '../../src/components/PeriodComparisonCard';
+import { HourlyRateCard } from '../../src/components/HourlyRateCard';
 import { useEarningsStore } from '../../src/stores/earningsStore';
 import type { EarningsPeriod } from '../../src/services/earnings';
 
@@ -155,6 +156,9 @@ export default function DashboardPage() {
 
               {/* Period Comparison */}
               <PeriodComparisonCard period={period} refreshTrigger={comparisonRefresh} />
+
+              {/* Hourly Rate */}
+              <HourlyRateCard period={period} refreshTrigger={comparisonRefresh} />
 
               {/* Platform Breakdown Chart */}
               {hasEarnings && platformBreakdown.length > 0 && (

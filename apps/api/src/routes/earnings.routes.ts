@@ -7,6 +7,7 @@ import {
   GetEarningsSummarySchema,
   GetDeliveriesSchema,
   GetCompareSchema,
+  GetHourlyRateSchema,
   ImportCSVSchema,
   GetImportHistorySchema,
   GetImportBatchSchema,
@@ -69,6 +70,13 @@ router.get(
   '/compare',
   validateRequest(GetCompareSchema),
   earningsController.getComparison.bind(earningsController)
+);
+
+// Get hourly rate
+router.get(
+  '/hourly-rate',
+  validateRequest(GetHourlyRateSchema),
+  earningsController.getHourlyRate.bind(earningsController)
 );
 
 // Get individual deliveries

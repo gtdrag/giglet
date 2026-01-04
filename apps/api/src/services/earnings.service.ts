@@ -381,6 +381,83 @@ class EarningsService {
 
     return new Date(localDate.getTime() + offset);
   }
+
+  /**
+   * Get hourly rate for a period
+   * Calculates earnings / active hours from trip data
+   */
+  async getHourlyRate(
+    userId: string,
+    period: EarningsPeriod = 'week',
+    timezone: string = 'UTC'
+  ) {
+    const { start, end } = this.getDateRange(period, timezone);
+
+    // Get total earnings for the period
+    const earningsResult = await prisma.delivery.aggregate({
+      where: {
+        userId,
+        deliveredAt: {
+          gte: start,
+          lt: end,
+        },
+      },
+      _sum: {
+        earnings: true,
+      },
+    });
+
+    const totalEarnings = earningsResult._sum.earnings?.toNumber() ?? 0;
+
+    // Get trips for the period to calculate active hours
+    const trips = await prisma.trip.findMany({
+      where: {
+        userId,
+        startedAt: {
+          gte: start,
+          lt: end,
+        },
+        endedAt: {
+          not: null,
+        },
+      },
+      select: {
+        startedAt: true,
+        endedAt: true,
+      },
+    });
+
+    // Calculate total active hours from trips
+    let totalHours = 0;
+    for (const trip of trips) {
+      if (trip.endedAt) {
+        const durationMs = trip.endedAt.getTime() - trip.startedAt.getTime();
+        totalHours += durationMs / (1000 * 60 * 60); // Convert to hours
+      }
+    }
+
+    // Round to 1 decimal place
+    totalHours = Math.round(totalHours * 10) / 10;
+
+    // Calculate hourly rate
+    const hourlyRate = totalHours > 0 ? Math.round((totalEarnings / totalHours) * 100) / 100 : 0;
+
+    // Period labels for display
+    const periodLabels: Record<EarningsPeriod, string> = {
+      today: 'Today',
+      week: 'This Week',
+      month: 'This Month',
+      year: 'This Year',
+    };
+
+    return {
+      totalEarnings: Math.round(totalEarnings * 100) / 100,
+      totalHours,
+      hourlyRate,
+      periodLabel: periodLabels[period],
+      hasData: trips.length > 0,
+    };
+  }
 }
 
 export const earningsService = new EarningsService();
