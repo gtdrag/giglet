@@ -41,6 +41,31 @@ export interface DeliveriesResponse {
   offset: number;
 }
 
+export interface PeriodComparison {
+  current: {
+    total: number;
+    deliveryCount: number;
+    dateRange: {
+      start: string;
+      end: string;
+    };
+  };
+  previous: {
+    total: number;
+    deliveryCount: number;
+    dateRange: {
+      start: string;
+      end: string;
+    };
+  };
+  change: {
+    earnings: number;
+    earningsPercent: number;
+    deliveries: number;
+  };
+  hasPreviousData: boolean;
+}
+
 export class EarningsError extends Error {
   constructor(message: string) {
     super(message);
@@ -100,6 +125,30 @@ export async function getDeliveries(
     const message =
       (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
         ?.message || 'Failed to fetch deliveries';
+    throw new EarningsError(message);
+  }
+}
+
+/**
+ * Get period comparison (current vs previous)
+ */
+export async function getComparison(
+  period: EarningsPeriod = 'week',
+  timezone?: string
+): Promise<PeriodComparison> {
+  try {
+    const params = new URLSearchParams();
+    params.append('period', period);
+    if (timezone) {
+      params.append('timezone', timezone);
+    }
+
+    const response = await api.get(`/earnings/compare?${params.toString()}`);
+    return response.data.data;
+  } catch (error) {
+    const message =
+      (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+        ?.message || 'Failed to fetch comparison';
     throw new EarningsError(message);
   }
 }

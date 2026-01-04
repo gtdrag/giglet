@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ManualDeliveryModal } from '../../src/components/ManualDeliveryModal';
 import { PlatformBreakdownChart } from '../../src/components/PlatformBreakdownChart';
+import { PeriodComparisonCard } from '../../src/components/PeriodComparisonCard';
 import { useEarningsStore } from '../../src/stores/earningsStore';
 import type { EarningsPeriod } from '../../src/services/earnings';
 
@@ -42,6 +43,7 @@ function formatCurrency(amount: number): string {
 export default function DashboardPage() {
   const [showManualModal, setShowManualModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [comparisonRefresh, setComparisonRefresh] = useState(0);
 
   // Connect to earnings store
   const {
@@ -72,6 +74,7 @@ export default function DashboardPage() {
   // Handle manual delivery success - refresh data
   const handleManualDeliverySuccess = useCallback(() => {
     refresh();
+    setComparisonRefresh((prev) => prev + 1);
   }, [refresh]);
 
   // Pull-to-refresh handler
@@ -79,6 +82,7 @@ export default function DashboardPage() {
     setIsRefreshing(true);
     try {
       await refresh();
+      setComparisonRefresh((prev) => prev + 1);
     } finally {
       setIsRefreshing(false);
     }
@@ -148,6 +152,9 @@ export default function DashboardPage() {
                 {PERIOD_LABELS[period]}
                 {summary?.dateRange && ` (${formatDateRange(summary.dateRange.start, summary.dateRange.end)})`}
               </Text>
+
+              {/* Period Comparison */}
+              <PeriodComparisonCard period={period} refreshTrigger={comparisonRefresh} />
 
               {/* Platform Breakdown Chart */}
               {hasEarnings && platformBreakdown.length > 0 && (

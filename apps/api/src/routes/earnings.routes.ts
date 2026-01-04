@@ -6,6 +6,7 @@ import { validateRequest } from '../middleware/validate.middleware';
 import {
   GetEarningsSummarySchema,
   GetDeliveriesSchema,
+  GetCompareSchema,
   ImportCSVSchema,
   GetImportHistorySchema,
   GetImportBatchSchema,
@@ -61,6 +62,13 @@ router.get(
   '/summary',
   validateRequest(GetEarningsSummarySchema),
   earningsController.getSummary.bind(earningsController)
+);
+
+// Get period comparison
+router.get(
+  '/compare',
+  validateRequest(GetCompareSchema),
+  earningsController.getComparison.bind(earningsController)
 );
 
 // Get individual deliveries

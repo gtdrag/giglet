@@ -159,6 +159,136 @@ class EarningsService {
   }
 
   /**
+   * Get period comparison (current vs previous)
+   */
+  async getComparison(
+    userId: string,
+    period: EarningsPeriod = 'week',
+    timezone: string = 'UTC'
+  ) {
+    const { start: currentStart, end: currentEnd } = this.getDateRange(period, timezone);
+    const { start: previousStart, end: previousEnd } = this.getPreviousDateRange(period, timezone, currentStart, currentEnd);
+
+    // Fetch totals for both periods in parallel
+    const [currentData, previousData] = await Promise.all([
+      this.getSimpleSummary(userId, currentStart, currentEnd),
+      this.getSimpleSummary(userId, previousStart, previousEnd),
+    ]);
+
+    // Calculate changes
+    const earningsChange = currentData.total - previousData.total;
+    const earningsPercent = previousData.total > 0
+      ? Math.round((earningsChange / previousData.total) * 1000) / 10
+      : currentData.total > 0 ? 100 : 0;
+    const deliveriesChange = currentData.deliveryCount - previousData.deliveryCount;
+
+    return {
+      current: {
+        total: currentData.total,
+        deliveryCount: currentData.deliveryCount,
+        dateRange: {
+          start: currentStart.toISOString(),
+          end: currentEnd.toISOString(),
+        },
+      },
+      previous: {
+        total: previousData.total,
+        deliveryCount: previousData.deliveryCount,
+        dateRange: {
+          start: previousStart.toISOString(),
+          end: previousEnd.toISOString(),
+        },
+      },
+      change: {
+        earnings: Math.round(earningsChange * 100) / 100,
+        earningsPercent,
+        deliveries: deliveriesChange,
+      },
+      hasPreviousData: previousData.deliveryCount > 0,
+    };
+  }
+
+  /**
+   * Get simple summary totals for a date range
+   */
+  private async getSimpleSummary(userId: string, start: Date, end: Date) {
+    const result = await prisma.delivery.aggregate({
+      where: {
+        userId,
+        deliveredAt: {
+          gte: start,
+          lt: end,
+        },
+      },
+      _sum: {
+        earnings: true,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    return {
+      total: result._sum.earnings?.toNumber() ?? 0,
+      deliveryCount: result._count.id,
+    };
+  }
+
+  /**
+   * Calculate previous period date range
+   */
+  private getPreviousDateRange(
+    period: EarningsPeriod,
+    timezone: string,
+    currentStart: Date,
+    currentEnd: Date
+  ): { start: Date; end: Date } {
+    // Calculate duration of current period in milliseconds
+    const durationMs = currentEnd.getTime() - currentStart.getTime();
+
+    switch (period) {
+      case 'today':
+        // Yesterday same duration
+        return {
+          start: new Date(currentStart.getTime() - 24 * 60 * 60 * 1000),
+          end: new Date(currentEnd.getTime() - 24 * 60 * 60 * 1000),
+        };
+
+      case 'week':
+        // Last week same duration
+        return {
+          start: new Date(currentStart.getTime() - 7 * 24 * 60 * 60 * 1000),
+          end: new Date(currentEnd.getTime() - 7 * 24 * 60 * 60 * 1000),
+        };
+
+      case 'month':
+        // Same dates in previous month
+        const prevMonthStart = new Date(currentStart);
+        prevMonthStart.setMonth(prevMonthStart.getMonth() - 1);
+        const prevMonthEnd = new Date(currentEnd);
+        prevMonthEnd.setMonth(prevMonthEnd.getMonth() - 1);
+        return {
+          start: prevMonthStart,
+          end: prevMonthEnd,
+        };
+
+      case 'year':
+        // Same dates in previous year
+        const prevYearStart = new Date(currentStart);
+        prevYearStart.setFullYear(prevYearStart.getFullYear() - 1);
+        const prevYearEnd = new Date(currentEnd);
+        prevYearEnd.setFullYear(prevYearEnd.getFullYear() - 1);
+        return {
+          start: prevYearStart,
+          end: prevYearEnd,
+        };
+
+      default:
+        throw new Error(`Invalid period: ${period}`);
+    }
+  }
+
+  /**
    * Calculate date range for a period in user's timezone
    */
   private getDateRange(

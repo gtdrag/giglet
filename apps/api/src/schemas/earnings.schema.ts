@@ -38,8 +38,16 @@ export const GetDeliveriesSchema = z.object({
   }),
 });
 
+export const GetCompareSchema = z.object({
+  query: z.object({
+    period: EarningsPeriodSchema.optional().default('week'),
+    timezone: TimezoneSchema,
+  }),
+});
+
 export type GetEarningsSummaryInput = z.infer<typeof GetEarningsSummarySchema>;
 export type GetDeliveriesInput = z.infer<typeof GetDeliveriesSchema>;
+export type GetCompareInput = z.infer<typeof GetCompareSchema>;
 
 // Platform enum for import
 export const PlatformSchema = z.enum(['DOORDASH', 'UBEREATS']);
