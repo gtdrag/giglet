@@ -8,6 +8,17 @@ import { Ionicons } from '@expo/vector-icons';
 // Refresh interval: 15 minutes in milliseconds
 const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 
+// Location timeout in milliseconds (10 seconds)
+const LOCATION_TIMEOUT_MS = 10000;
+
+// Promise wrapper with timeout
+const withTimeout = <T,>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(errorMessage)), ms)),
+  ]);
+};
+
 // Format relative time (e.g., "2 min ago", "Just now")
 function formatRelativeTime(timestamp: number): string {
   const now = Date.now();
@@ -165,9 +176,13 @@ export default function MapPage() {
         return;
       }
 
-      const currentLocation = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      const currentLocation = await withTimeout(
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        }),
+        LOCATION_TIMEOUT_MS,
+        'Location request timed out'
+      );
 
       const newLocation = {
         latitude: currentLocation.coords.latitude,
@@ -180,7 +195,8 @@ export default function MapPage() {
       setIsLoading(false);
       loadZonesWithAnimation(newLocation.latitude, newLocation.longitude);
     } catch (error) {
-      setErrorMsg('Unable to get location. Please try again.');
+      console.warn('Location error:', error instanceof Error ? error.message : error);
+      setErrorMsg('Using default location. Enable GPS for accurate results.');
       setLocation(DEFAULT_LOCATION);
       setIsLoading(false);
       loadZonesWithAnimation(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude);
@@ -206,9 +222,13 @@ export default function MapPage() {
 
   const centerOnUser = async () => {
     try {
-      const currentLocation = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      const currentLocation = await withTimeout(
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        }),
+        LOCATION_TIMEOUT_MS,
+        'Location request timed out'
+      );
 
       const newRegion: Region = {
         latitude: currentLocation.coords.latitude,
@@ -220,7 +240,8 @@ export default function MapPage() {
       mapRef.current?.animateToRegion(newRegion, 500);
       setLocation(newRegion);
     } catch {
-      // Silently fail - user can try again
+      // Fall back to default location if timeout or error
+      mapRef.current?.animateToRegion(DEFAULT_LOCATION, 500);
     }
   };
 
