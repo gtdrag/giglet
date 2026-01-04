@@ -2,7 +2,7 @@
  * CSV Import Screen - Import earnings from DoorDash or Uber Eats CSV files
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,12 +17,13 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { parseCSV, type ImportPreview, type ParsedDelivery } from '../src/services/csvParser';
 import { importCSV as importCSVToBackend, type ImportResult } from '../src/services/earnings';
+import { ImportTutorial, hasTutorialBeenSeen } from '../src/components/ImportTutorial';
 
 // Platform type
 type Platform = 'DOORDASH' | 'UBEREATS';
 
 // Import state machine
-type ImportStep = 'select' | 'preview' | 'importing' | 'complete' | 'error';
+type ImportStep = 'select' | 'tutorial' | 'preview' | 'importing' | 'complete' | 'error';
 
 interface ImportState {
   step: ImportStep;
@@ -69,8 +70,14 @@ export default function ImportScreen() {
     router.back();
   }, [router]);
 
-  const handleSelectPlatform = useCallback((platform: Platform) => {
+  const handleSelectPlatform = useCallback(async (platform: Platform) => {
     setState((prev) => ({ ...prev, platform }));
+
+    // Check if user has opted out of tutorial
+    const skipTutorial = await hasTutorialBeenSeen();
+    if (!skipTutorial) {
+      setState((prev) => ({ ...prev, platform, step: 'tutorial' }));
+    }
   }, []);
 
   const handlePickFile = useCallback(async () => {
@@ -120,6 +127,16 @@ export default function ImportScreen() {
       }));
     }
   }, [state.platform]);
+
+  const handleTutorialContinue = useCallback(() => {
+    setState((prev) => ({ ...prev, step: 'select' }));
+    // Trigger file picker after tutorial
+    setTimeout(() => handlePickFile(), 100);
+  }, [handlePickFile]);
+
+  const handleTutorialSkip = useCallback(() => {
+    setState((prev) => ({ ...prev, step: 'select' }));
+  }, []);
 
   const parseAndPreview = async (
     asset: DocumentPicker.DocumentPickerAsset,
@@ -434,6 +451,19 @@ export default function ImportScreen() {
     );
   };
 
+  // Render tutorial step
+  const renderTutorialStep = () => {
+    if (!state.platform) return null;
+
+    return (
+      <ImportTutorial
+        platform={state.platform}
+        onContinue={handleTutorialContinue}
+        onSkip={handleTutorialSkip}
+      />
+    );
+  };
+
   // Render error step
   const renderErrorStep = () => (
     <View style={styles.stepContainer}>
@@ -469,6 +499,7 @@ export default function ImportScreen() {
         showsVerticalScrollIndicator={false}
       >
         {state.step === 'select' && renderSelectStep()}
+        {state.step === 'tutorial' && renderTutorialStep()}
         {state.step === 'preview' && renderPreviewStep()}
         {state.step === 'importing' && renderImportingStep()}
         {state.step === 'complete' && renderCompleteStep()}
