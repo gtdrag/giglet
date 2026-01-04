@@ -1,16 +1,24 @@
 import { useState, useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Redirect } from 'expo-router';
 import MapPage from './index';
 import DashboardPage from './dashboard';
 import MileagePage from './mileage';
 import { useMileageStore } from '../../src/stores/mileageStore';
+import { useAuthStore } from '../../src/stores/authStore';
 
 type Page = 'map' | 'dashboard' | 'mileage';
 
 export default function MainLayout() {
   const [currentPage, setCurrentPage] = useState<Page>('map');
   const { trackingEnabled, loadTrackingPreference, checkPermission } = useMileageStore();
+  const { isAuthenticated, isLoading, checkAuthStatus } = useAuthStore();
+
+  // Check auth status on mount
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
   // Load saved tracking preference on mount
   useEffect(() => {
@@ -23,6 +31,20 @@ export default function MainLayout() {
       checkPermission();
     }
   }, [currentPage, checkPermission]);
+
+  // Show loading while checking auth
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#06B6D4" />
+      </View>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   const renderPage = () => {
     switch (currentPage) {
@@ -84,6 +106,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#09090B',
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#09090B',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
