@@ -15,15 +15,16 @@ datasource db {
 // ============ USERS ============
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  passwordHash String?
-  name         String?
-  authProvider AuthProvider @default(EMAIL)
-  appleId      String?      @unique
-  googleId     String?      @unique
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id                  String       @id @default(cuid())
+  email               String       @unique
+  passwordHash        String?
+  name                String?
+  authProvider        AuthProvider @default(EMAIL)
+  appleId             String?      @unique
+  googleId            String?      @unique
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  deletionScheduledAt DateTime?    // Soft delete: null = active, set = pending deletion
 
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
@@ -66,13 +67,14 @@ model PasswordResetToken {
 }
 
 model UserPreferences {
-  id                   String  @id @default(cuid())
-  userId               String  @unique
-  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  notificationsEnabled Boolean @default(true)
-  zoneAlertsEnabled    Boolean @default(true)
-  autoMileageTracking  Boolean @default(true)
-  darkModeEnabled      Boolean @default(true)
+  id                    String  @id @default(cuid())
+  userId                String  @unique
+  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notificationsEnabled  Boolean @default(true)
+  zoneAlertsEnabled     Boolean @default(true)
+  syncErrorAlertsEnabled Boolean @default(true)
+  autoMileageTracking   Boolean @default(true)
+  darkModeEnabled       Boolean @default(true)
 }
 
 // ============ PLATFORM ACCOUNTS ============

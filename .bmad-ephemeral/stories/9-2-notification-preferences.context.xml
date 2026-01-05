@@ -1,0 +1,244 @@
+<story-context id="9-2-notification-preferences" v="1.0">
+  <metadata>
+    <epicId>9</epicId>
+    <storyId>2</storyId>
+    <title>Notification Preferences</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2026-01-05</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/9-2-notification-preferences.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>registered user</asA>
+    <iWant>to manage my notification preferences</iWant>
+    <soThat>I can control which alerts I receive and customize my app experience</soThat>
+    <tasks>
+      <task id="1" ac="1">Create Notifications Screen UI
+        <subtask>Create app/notifications.tsx screen with navigation from accounts.tsx</subtask>
+        <subtask>Add toggle switches for: Push notifications, Focus Zone alerts, Sync error alerts</subtask>
+        <subtask>Show loading state while fetching preferences</subtask>
+        <subtask>Display descriptive text for each toggle option</subtask>
+        <subtask>Style to match app design system (dark theme)</subtask>
+      </task>
+      <task id="2" ac="1">Create Settings Store
+        <subtask>Create src/stores/settingsStore.ts using Zustand</subtask>
+        <subtask>Define preferences state interface (notificationsEnabled, zoneAlertsEnabled, syncErrorAlertsEnabled)</subtask>
+        <subtask>Implement setPreferences action</subtask>
+        <subtask>Implement updatePreference action for individual toggle updates</subtask>
+        <subtask>Persist preferences across app sessions</subtask>
+      </task>
+      <task id="3" ac="1">Create Settings API Service
+        <subtask>Create src/services/settings.ts with API methods</subtask>
+        <subtask>Implement getPreferences() - GET /api/v1/users/preferences</subtask>
+        <subtask>Implement updatePreferences(data) - PUT /api/v1/users/preferences</subtask>
+        <subtask>Handle API errors with user-friendly messages</subtask>
+      </task>
+      <task id="4" ac="1">Backend Preferences Endpoints
+        <subtask>Create apps/api/src/routes/users.routes.ts for user preferences</subtask>
+        <subtask>Add GET /users/preferences endpoint</subtask>
+        <subtask>Add PUT /users/preferences endpoint</subtask>
+        <subtask>Create apps/api/src/schemas/preferences.schema.ts with Zod validation</subtask>
+        <subtask>Create apps/api/src/controllers/users.controller.ts</subtask>
+        <subtask>Register user routes in main router</subtask>
+      </task>
+      <task id="5" ac="1">Integrate Toggle Auto-Save
+        <subtask>Implement optimistic UI updates on toggle change</subtask>
+        <subtask>Call API on each toggle change</subtask>
+        <subtask>Revert toggle on API error with error message</subtask>
+        <subtask>Update settingsStore on successful save</subtask>
+      </task>
+      <task id="6" ac="1">Update Accounts Screen Navigation
+        <subtask>Add "Notifications" menu item to accounts.tsx</subtask>
+        <subtask>Display notification icon for menu item</subtask>
+        <subtask>Navigate to notifications.tsx on tap</subtask>
+      </task>
+      <task id="7" ac="1,2">Add Unit Tests
+        <subtask>Test settingsStore state management</subtask>
+        <subtask>Test settings.ts service API calls</subtask>
+        <subtask>Test preference toggle error handling</subtask>
+        <subtask>Test optimistic update and rollback behavior</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">Given I am in Settings > Notifications, When I view notification options, Then I see toggles for: Push notifications, Focus Zone alerts, Sync error alerts, And I can turn each on/off independently, And changes save automatically.</criterion>
+    <criterion id="2">Given I disable Focus Zone alerts, When a zone heats up, Then I do not receive a push notification.</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-9.md</path>
+        <title>Epic 9 Technical Specification</title>
+        <section>Story 9.2: Notification Preferences</section>
+        <snippet>AC 9.2.1: Shows toggles for Push notifications, Focus Zone alerts, Sync error alerts with auto-save. AC 9.2.2: Disabled Focus Zone alerts prevents push notification.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-9.md</path>
+        <title>Epic 9 Technical Specification</title>
+        <section>APIs and Interfaces</section>
+        <snippet>GET /api/v1/users/preferences returns preferences object. PUT /api/v1/users/preferences accepts UpdatePreferencesRequest with optional boolean fields.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-9.md</path>
+        <title>Epic 9 Technical Specification</title>
+        <section>Data Models and Contracts</section>
+        <snippet>UserPreferences interface: notificationsEnabled, zoneAlertsEnabled, syncErrorAlertsEnabled (all boolean). Uses existing Prisma UserPreferences model.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/9-1-profile-view-and-edit.md</path>
+        <title>Story 9.1 Profile View and Edit</title>
+        <section>Dev Agent Record</section>
+        <snippet>Established patterns: accounts.tsx as settings hub, user.ts service pattern, Zod validation at schemas/, 287 tests pass.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <artifact>
+        <path>apps/api/prisma/schema.prisma</path>
+        <kind>database-schema</kind>
+        <symbol>UserPreferences</symbol>
+        <lines>68-76</lines>
+        <reason>Existing Prisma model with notificationsEnabled, zoneAlertsEnabled, autoMileageTracking, darkModeEnabled fields. May need to add syncErrorAlertsEnabled or map to existing field.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/src/stores/authStore.ts</path>
+        <kind>store</kind>
+        <symbol>useAuthStore</symbol>
+        <lines>32-146</lines>
+        <reason>Reference pattern for creating settingsStore - uses Zustand create() with typed state and actions.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/src/services/user.ts</path>
+        <kind>service</kind>
+        <symbol>UserServiceError, getProfile, updateProfile</symbol>
+        <lines>1-109</lines>
+        <reason>Reference pattern for settings.ts - custom error class, API response handling, axios error parsing.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/src/services/api.ts</path>
+        <kind>service</kind>
+        <symbol>api</symbol>
+        <reason>Axios instance with auth interceptors - import and use for API calls.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/api/src/routes/index.ts</path>
+        <kind>router</kind>
+        <symbol>router</symbol>
+        <lines>1-55</lines>
+        <reason>Main router where users routes must be registered. Comment at line 26 shows planned /users route. Add: router.use('/users', usersRoutes).</reason>
+      </artifact>
+      <artifact>
+        <path>apps/api/src/schemas/user.schema.ts</path>
+        <kind>schema</kind>
+        <symbol>UpdateProfileSchema</symbol>
+        <reason>Reference pattern for preferences.schema.ts - Zod validation with z.object() and body wrapper.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/app/accounts.tsx</path>
+        <kind>screen</kind>
+        <symbol>AccountsScreen</symbol>
+        <lines>219-241</lines>
+        <reason>Settings hub where Profile section was added. Add Notifications section using same pattern: profileSection style, Pressable with icon, router.push('/notifications').</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/app/profile.tsx</path>
+        <kind>screen</kind>
+        <symbol>ProfileScreen</symbol>
+        <reason>Reference pattern for notifications.tsx - SafeAreaView, header with back button, form styling, dark theme.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/api/src/controllers/auth.controller.ts</path>
+        <kind>controller</kind>
+        <symbol>updateMe</symbol>
+        <lines>222-257</lines>
+        <reason>Reference pattern for users.controller.ts - req.user.sub for user ID, Prisma update, successResponse wrapper.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/src/services/__tests__/user.test.ts</path>
+        <kind>test</kind>
+        <symbol>User Service tests</symbol>
+        <lines>1-167</lines>
+        <reason>Reference pattern for settings.test.ts - vi.mock for api module, describe/it structure, mock resolved/rejected values.</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <mobile>
+        <package name="zustand" version="^5.0.9">State management for settingsStore</package>
+        <package name="axios" version="^1.13.2">HTTP client for API calls</package>
+        <package name="expo-router" version="^6.0.21">Navigation with router.push()</package>
+        <package name="react-native" version="0.81.5">Switch component for toggles</package>
+        <package name="@expo/vector-icons" version="^15.0.3">Ionicons for notification icons</package>
+      </mobile>
+      <api>
+        <package name="express" version="^5.2.1">Router and request handling</package>
+        <package name="@prisma/client" version="^6.19.1">Database operations for UserPreferences</package>
+        <package name="zod" version="^4.3.4">Request validation for preferences schema</package>
+        <package name="vitest" version="^4.0.16">Unit testing framework</package>
+      </api>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="pattern">Use Zustand create() pattern from authStore.ts for settingsStore</constraint>
+    <constraint type="pattern">Follow UserServiceError pattern from user.ts for SettingsServiceError</constraint>
+    <constraint type="pattern">Use existing api.ts axios instance with interceptors</constraint>
+    <constraint type="pattern">Zod validation schema with body wrapper (z.object({ body: z.object({...}) }))</constraint>
+    <constraint type="pattern">Use requireAuth middleware on all /users endpoints</constraint>
+    <constraint type="api">Response format: { success: true, data: { preferences: {...} } }</constraint>
+    <constraint type="ui">Dark theme colors: bg #09090B, card #18181B, border #27272A, text #FAFAFA</constraint>
+    <constraint type="ui">Optimistic UI updates - toggle immediately, revert on error</constraint>
+    <constraint type="database">UserPreferences model exists - check if syncErrorAlertsEnabled field needed or can map to autoMileageTracking</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>GET /api/v1/users/preferences</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/v1/users/preferences → { success: true, data: { preferences: UserPreferences } }</signature>
+      <path>apps/api/src/routes/users.routes.ts (to create)</path>
+    </interface>
+    <interface>
+      <name>PUT /api/v1/users/preferences</name>
+      <kind>REST endpoint</kind>
+      <signature>PUT /api/v1/users/preferences { notificationsEnabled?: boolean, zoneAlertsEnabled?: boolean, syncErrorAlertsEnabled?: boolean } → { success: true, data: { preferences: UserPreferences } }</signature>
+      <path>apps/api/src/routes/users.routes.ts (to create)</path>
+    </interface>
+    <interface>
+      <name>useSettingsStore</name>
+      <kind>Zustand store hook</kind>
+      <signature>useSettingsStore(): { preferences: UserPreferences | null, isLoading: boolean, error: string | null, loadPreferences: () => Promise&lt;void&gt;, updatePreference: (key: string, value: boolean) => Promise&lt;void&gt; }</signature>
+      <path>apps/mobile/src/stores/settingsStore.ts (to create)</path>
+    </interface>
+    <interface>
+      <name>getPreferences / updatePreferences</name>
+      <kind>API service functions</kind>
+      <signature>getPreferences(): Promise&lt;UserPreferences&gt; | updatePreferences(data: UpdatePreferencesRequest): Promise&lt;UserPreferences&gt;</signature>
+      <path>apps/mobile/src/services/settings.ts (to create)</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Vitest with vi.mock() for mocking dependencies. Tests co-located in __tests__ folders adjacent to source files. Mobile: apps/mobile/src/**/__tests__/*.test.ts. API: apps/api/src/**/__tests__/*.test.ts. Follow describe/it structure. Mock axios api module using vi.mock('../api'). Test success, API error, network error, and unknown error scenarios.
+    </standards>
+    <locations>
+      <location>apps/mobile/src/stores/__tests__/</location>
+      <location>apps/mobile/src/services/__tests__/</location>
+      <location>apps/api/src/services/__tests__/</location>
+    </locations>
+    <ideas>
+      <idea ac="1">Test settingsStore.loadPreferences() fetches and stores preferences</idea>
+      <idea ac="1">Test settingsStore.updatePreference() performs optimistic update</idea>
+      <idea ac="1">Test settingsStore.updatePreference() reverts on API error</idea>
+      <idea ac="1">Test settings.ts getPreferences() returns UserPreferences</idea>
+      <idea ac="1">Test settings.ts updatePreferences() sends correct request body</idea>
+      <idea ac="1">Test settings.ts handles 400 validation error</idea>
+      <idea ac="1">Test settings.ts handles network error</idea>
+      <idea ac="2">Test that zoneAlertsEnabled=false is persisted and retrieved correctly</idea>
+    </ideas>
+  </tests>
+</story-context>

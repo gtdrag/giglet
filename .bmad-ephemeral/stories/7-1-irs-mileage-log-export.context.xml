@@ -1,0 +1,146 @@
+<story-context id="7-1-irs-mileage-log-export" v="1.0">
+  <metadata>
+    <epicId>7</epicId>
+    <storyId>1</storyId>
+    <title>IRS Mileage Log Export</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2026-01-05</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/7-1-irs-mileage-log-export.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>Pro subscriber with tracked mileage</asA>
+    <iWant>to export an IRS-compliant mileage log in CSV or PDF format</iWant>
+    <soThat>I can claim my mileage deduction at tax time with proper documentation</soThat>
+    <tasks>
+      <task id="1" ac="5">Install Required Dependencies - expo-file-system, expo-sharing, expo-print</task>
+      <task id="2" ac="1">Create Tax Export Screen UI with Pro tier gate and format selector</task>
+      <task id="3" ac="4">Implement Date Range Selector Component with presets and custom range</task>
+      <task id="4" ac="2,4">Create CSV Generator Service with IRS-compliant columns</task>
+      <task id="5" ac="3,4">Create PDF Generator Service using expo-print from HTML template</task>
+      <task id="6" ac="1,4,5">Implement Export Service Orchestration with reverse geocoding</task>
+      <task id="7" ac="5">Implement Share Functionality using expo-sharing</task>
+      <task id="8" ac="1,4,5">Wire Up Export Flow in Tax Export Screen</task>
+      <task id="9" ac="2,4">Add Unit Tests for CSV generator, date range utilities, Pro tier gating</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">Given I am a Pro subscriber with tracked mileage, When I tap "Export Mileage Log" on the Tax Export screen, Then I can select CSV or PDF format</criterion>
+    <criterion id="2">Given I export to CSV, When I open the file, Then it contains columns: Date, Business Purpose, Start Location, End Location, Miles</criterion>
+    <criterion id="3">Given I export to PDF, When I open the file, Then it is properly formatted with header, totals, and IRS-compliant layout</criterion>
+    <criterion id="4">Given I select a date range, When export generates, Then only trips within that range are included</criterion>
+    <criterion id="5">Given export completes, When I tap Share, Then the native share sheet opens with the file</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path=".bmad-ephemeral/stories/tech-spec-epic-7.md" title="Epic 7 Tech Spec" section="Story 7.1: IRS Mileage Log Export">
+        Defines acceptance criteria, workflows, data models (MileageExportRow, DateRange), and IRS compliance requirements. Client-side generation using expo-print for PDF.
+      </doc>
+      <doc path="docs/epics.md" title="Giglet Epics" section="Epic 7: Tax Export">
+        Story 7.1 definition: Pro user exports IRS-compliant mileage log in CSV/PDF format with date, purpose, locations, miles columns.
+      </doc>
+      <doc path="docs/architecture.md" title="Architecture" section="Mileage Tracking">
+        Trip data model with startedAt, endedAt, miles, lat/lng coordinates. Uses AsyncStorage for local persistence.
+      </doc>
+    </docs>
+
+    <code>
+      <file path="apps/mobile/src/stores/mileageStore.ts" kind="store" symbol="useMileageStore" reason="Source for trip data - yearMiles, loadRecentTrips(), getCompletedTrips()"/>
+      <file path="apps/mobile/src/stores/subscriptionStore.ts" kind="store" symbol="useSubscriptionStore" reason="Pro tier validation - isProUser, canAccess('taxExport')"/>
+      <file path="apps/mobile/src/utils/locationStorage.ts" kind="utility" symbol="getTripsInRange, CompletedTrip, TripStats" reason="Trip data access, date filtering, CompletedTrip interface with miles, startedAt, endedAt, lat/lng"/>
+      <file path="apps/mobile/src/utils/deliveryStorage.ts" kind="utility" symbol="DeliveryRecord" reason="Interface pattern reference for data models"/>
+      <file path="apps/mobile/app/(tabs)/mileage.tsx" kind="screen" reason="Add navigation link to Tax Export screen"/>
+      <file path="apps/mobile/src/services/subscriptions.ts" kind="service" symbol="isSubscriptionServiceAvailable" reason="Pro tier service patterns"/>
+      <file path="apps/mobile/package.json" kind="config" reason="Add new dependencies: expo-file-system, expo-sharing, expo-print"/>
+    </code>
+
+    <dependencies>
+      <ecosystem name="expo-react-native">
+        <existing>
+          <package name="expo" version="~54.0.30"/>
+          <package name="expo-location" version="~19.0.8" note="Reverse geocoding for addresses"/>
+          <package name="@react-native-community/datetimepicker" version="8.4.4" note="Date range picker UI"/>
+          <package name="zustand" version="^5.0.9" note="State management for stores"/>
+          <package name="react-native-purchases" version="^9.6.13" note="Pro tier validation"/>
+          <package name="@react-native-async-storage/async-storage" version="2.2.0" note="Local storage"/>
+        </existing>
+        <required>
+          <package name="expo-file-system" version="~19.0.x" note="File read/write for exports"/>
+          <package name="expo-sharing" version="~14.0.x" note="Native share sheet"/>
+          <package name="expo-print" version="~15.0.x" note="PDF generation from HTML"/>
+        </required>
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint source="tech-spec">Client-side generation: PDF/CSV created on-device to minimize API costs</constraint>
+    <constraint source="tech-spec">Pro Feature Gating: All export features require active Pro subscription (subscriptionStore.isProUser)</constraint>
+    <constraint source="tech-spec">File Size Limits: Generated files must be under 10MB for email attachment</constraint>
+    <constraint source="tech-spec">Offline Capable: Exports work offline using cached trip data from AsyncStorage</constraint>
+    <constraint source="architecture">Dark Theme: Use #09090B (bg), #18181B (card), #27272A (border)</constraint>
+    <constraint source="architecture">Storage Keys: Use @giglet/ prefix for any new storage keys</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="CompletedTrip" kind="type" path="apps/mobile/src/utils/locationStorage.ts">
+      interface CompletedTrip {
+        id: string;
+        startedAt: string; // ISO date
+        endedAt: string;
+        miles: number;
+        startLat: number;
+        startLng: number;
+        endLat: number;
+        endLng: number;
+        pointCount: number;
+        isManual?: boolean;
+        encodedRoute?: string;
+      }
+    </interface>
+    <interface name="getTripsInRange" kind="function" path="apps/mobile/src/utils/locationStorage.ts">
+      getTripsInRange(startDate: Date, endDate: Date): Promise&lt;CompletedTrip[]&gt;
+    </interface>
+    <interface name="useSubscriptionStore" kind="zustand-store" path="apps/mobile/src/stores/subscriptionStore.ts">
+      {
+        isProUser: boolean;
+        canAccess: (feature: string) => boolean;
+        loadSubscription: () => Promise&lt;void&gt;;
+      }
+    </interface>
+    <interface name="useMileageStore" kind="zustand-store" path="apps/mobile/src/stores/mileageStore.ts">
+      {
+        yearMiles: number;
+        loadRecentTrips: () => Promise&lt;void&gt;;
+        recentTrips: CompletedTrip[];
+      }
+    </interface>
+    <interface name="expo-location reverseGeocodeAsync" kind="expo-api" path="expo-location">
+      Location.reverseGeocodeAsync({ latitude, longitude }): Promise&lt;LocationGeocodedAddress[]&gt;
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit tests. Test files co-located in __tests__ directories adjacent to source.
+      Current test count: 318 tests (200 mobile + 118 API). Follow existing patterns in subscriptions.test.ts and deliveryStorage.test.ts.
+      Mock native modules (expo-location, expo-file-system, expo-sharing, expo-print) as they won't be available in test environment.
+    </standards>
+    <locations>
+      <location>apps/mobile/src/**/__tests__/*.test.ts</location>
+      <location>apps/mobile/src/utils/__tests__/*.test.ts</location>
+      <location>apps/mobile/src/services/__tests__/*.test.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="2">Test CSV generator produces correct column headers: Date, Business Purpose, Start Location, End Location, Miles</idea>
+      <idea ac="4">Test CSV generator filters trips by date range correctly</idea>
+      <idea ac="4">Test date range utilities calculate presets accurately (This Year, Last Year, Q1-Q4)</idea>
+      <idea ac="1">Test Pro tier gating prevents Free user access to export</idea>
+      <idea ac="2">Test CSV generator includes totals row at bottom</idea>
+      <idea ac="4">Test edge cases: empty trips, single trip, trips spanning date range boundary</idea>
+    </ideas>
+  </tests>
+</story-context>

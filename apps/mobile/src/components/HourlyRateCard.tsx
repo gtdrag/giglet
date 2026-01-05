@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import * as Localization from 'expo-localization';
 import { getHourlyRate, type EarningsPeriod, type HourlyRateData } from '../services/earnings';
+import { useTabNavigationStore } from '../stores/tabNavigationStore';
 
 interface HourlyRateCardProps {
   period: EarningsPeriod;
@@ -26,6 +26,7 @@ function formatHours(hours: number): string {
 }
 
 export function HourlyRateCard({ period, refreshTrigger }: HourlyRateCardProps) {
+  const setCurrentPage = useTabNavigationStore((state) => state.setCurrentPage);
   const [hourlyData, setHourlyData] = useState<HourlyRateData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +69,7 @@ export function HourlyRateCard({ period, refreshTrigger }: HourlyRateCardProps) 
     return (
       <Pressable
         style={styles.noDataContainer}
-        onPress={() => router.push('/mileage' as any)}
+        onPress={() => setCurrentPage('mileage')}
       >
         <View style={styles.noDataIconContainer}>
           <Ionicons name="speedometer-outline" size={16} color="#71717A" />

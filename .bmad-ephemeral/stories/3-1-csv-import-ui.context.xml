@@ -1,0 +1,156 @@
+<story-context id="3-1-csv-import-ui" v="1.0">
+  <metadata>
+    <epicId>3</epicId>
+    <storyId>1</storyId>
+    <title>CSV Import UI</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2026-01-03</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/3-1-csv-import-ui.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user</asA>
+    <iWant>to import my earnings from a CSV file</iWant>
+    <soThat>I can see all my deliveries in Giglet without sharing credentials</soThat>
+    <tasks>
+      <task id="1" ac="1">Install expo-document-picker dependency</task>
+      <task id="2" ac="1">Create Import Screen Navigation</task>
+      <task id="3" ac="1">Create Platform Selection UI</task>
+      <task id="4" ac="1,2">Implement File Picker Integration</task>
+      <task id="5" ac="2">Create Client-Side CSV Parser</task>
+      <task id="6" ac="2">Build Import Preview Component</task>
+      <task id="7" ac="1,2,3">Implement Import State Machine</task>
+      <task id="8" ac="3">Create API Integration</task>
+      <task id="9" ac="3,4">Build Success/Error States</task>
+      <task id="10" ac="1,2,3,4">Add Unit Tests</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">Given I am on the Earnings screen, When I tap "Import Earnings", Then I see options to import from DoorDash or Uber Eats And I can select a CSV file</criterion>
+    <criterion id="2">Given I select a valid CSV file, When the file is parsed, Then I see a preview of deliveries (count, date range, total) And I can confirm or cancel</criterion>
+    <criterion id="3">Given the import completes successfully, When I view the confirmation, Then I see "Imported X deliveries from [platform]" And earnings dashboard updates</criterion>
+    <criterion id="4">Given I select an invalid file, When parsing fails, Then I see a clear error message And I can retry</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path=".bmad-ephemeral/stories/tech-spec-epic-3.md" title="Epic 3 Tech Spec" section="Story 3.1: CSV Import UI">
+        Complete design including ImportState interface, file picker integration, CSV column mappings, and component structure.
+      </doc>
+      <doc path="docs/epics.md" title="Epics" section="Story 3.1: CSV Import UI">
+        Acceptance criteria, prerequisites (Story 2.2, 1.5), and technical notes for expo-document-picker usage.
+      </doc>
+      <doc path="docs/architecture.md" title="Architecture" section="Mobile Application">
+        Expo Router file-based routing, Zustand state management, service layer patterns.
+      </doc>
+    </docs>
+
+    <code>
+      <file path="apps/mobile/src/stores/earningsStore.ts" kind="store" symbol="useEarningsStore" reason="Existing earnings state management - extend for import state">
+        Zustand store pattern with period switching, summary/deliveries fetching. Follow this pattern for import state.
+      </file>
+      <file path="apps/mobile/src/services/earnings.ts" kind="service" symbol="earningsService" reason="Existing earnings API calls - add import API method here">
+        Service pattern for API integration. Add importCSV method here.
+      </file>
+      <file path="apps/mobile/src/components/TripDetailModal.tsx" kind="component" symbol="TripDetailModal" reason="Modal pattern reference - use similar structure for preview modal">
+        Bottom sheet modal with Animated API, PanResponder for gestures, dark theme styling.
+      </file>
+      <file path="apps/mobile/src/components/ManualTripModal.tsx" kind="component" symbol="ManualTripModal" reason="Form modal pattern with validation and submit handling">
+        Modal with form inputs, validation, loading states. Reference for import preview confirm/cancel.
+      </file>
+      <file path="apps/mobile/app/(tabs)/index.tsx" kind="screen" symbol="MapPage" reason="Tab screen structure, SafeAreaView, loading/error states pattern">
+        Screen layout pattern with header, loading container, error banner styles.
+      </file>
+      <file path="apps/mobile/src/utils/deliveryStorage.ts" kind="utility" symbol="DeliveryRecord" reason="Delivery interface for parsed CSV data">
+        DeliveryRecord interface defines: id, platform, restaurantName, deliveredAt, earnings, tip, basePay, isManual.
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package name="expo" version="~54.0.30" />
+        <package name="expo-document-picker" version="~14.0" note="TO BE INSTALLED - file selection" />
+        <package name="zustand" version="^5.0.9" note="State management" />
+        <package name="axios" version="^1.13.2" note="API calls" />
+        <package name="react-native" version="0.81.5" />
+        <package name="@expo/vector-icons" version="^15.0.3" note="Icons" />
+      </node>
+      <devDependencies>
+        <package name="vitest" version="^4.0.16" note="Unit testing" />
+        <package name="typescript" version="~5.9.2" />
+      </devDependencies>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint source="tech-spec-epic-3.md">CSV files processed in memory, not persisted to disk</constraint>
+    <constraint source="tech-spec-epic-3.md">File size limit: 10MB maximum</constraint>
+    <constraint source="tech-spec-epic-3.md">MIME type validation before processing</constraint>
+    <constraint source="architecture.md">Use Zustand for state management</constraint>
+    <constraint source="architecture.md">Follow Expo Router file-based routing conventions</constraint>
+    <constraint source="architecture.md">Dark theme colors: #09090B (bg), #18181B (card), #27272A (border), #06B6D4 (accent)</constraint>
+    <constraint source="epics.md">Platform colors: DoorDash (#FF3008), Uber Eats (#06C167)</constraint>
+    <constraint source="story">Backend endpoint (Story 3.2) not yet implemented - prepare client-side only for this story</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="ImportState" kind="interface" path="apps/mobile/app/(tabs)/earnings/import.tsx">
+      interface ImportState {
+        step: 'select' | 'preview' | 'importing' | 'complete';
+        platform: 'DOORDASH' | 'UBEREATS' | null;
+        file: DocumentPickerAsset | null;
+        preview: ImportPreview | null;
+        error: string | null;
+      }
+    </interface>
+    <interface name="ImportPreview" kind="interface" path="apps/mobile/src/services/csvParser.ts">
+      interface ImportPreview {
+        deliveryCount: number;
+        dateRange: { start: string; end: string };
+        estimatedTotal: number;
+        duplicateCount: number;
+        sampleDeliveries: ParsedDelivery[];
+      }
+    </interface>
+    <interface name="ParsedDelivery" kind="interface" path="apps/mobile/src/services/csvParser.ts">
+      interface ParsedDelivery {
+        externalId: string;
+        platform: 'DOORDASH' | 'UBEREATS';
+        deliveredAt: Date;
+        basePay: number;
+        tip: number;
+        earnings: number;
+        restaurantName: string | null;
+      }
+    </interface>
+    <interface name="POST /api/v1/earnings/import" kind="REST endpoint" path="apps/api/src/routes/earnings.routes.ts">
+      Content-Type: multipart/form-data
+      Body: { file: File, platform: 'DOORDASH' | 'UBEREATS' }
+      Response: { success: true, data: { imported: number, duplicatesSkipped: number, dateRange: {...}, totalEarnings: number } }
+      Note: Endpoint will be implemented in Story 3.2 - prepare client-side call structure
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Vitest with globals enabled. Tests in src/**/__tests__/**/*.test.ts pattern.
+      Mock AsyncStorage and external dependencies. Use describe/it blocks.
+      Current: 132 tests passing. Follow patterns from deliveryStorage.test.ts and locationStorage.test.ts.
+    </standards>
+    <locations>
+      <location>apps/mobile/src/services/__tests__/csvParser.test.ts</location>
+      <location>apps/mobile/src/utils/__tests__/</location>
+    </locations>
+    <ideas>
+      <idea ac="1">Test file picker MIME type configuration accepts CSV types</idea>
+      <idea ac="2">Test DoorDash CSV parsing - column mapping, date parsing, currency normalization</idea>
+      <idea ac="2">Test Uber Eats CSV parsing - column mapping, date parsing, currency normalization</idea>
+      <idea ac="2">Test preview calculation - delivery count, date range, total earnings</idea>
+      <idea ac="3">Test state machine transitions: select → preview → importing → complete</idea>
+      <idea ac="4">Test error handling for malformed CSV, wrong file type, empty file</idea>
+      <idea ac="4">Test error state allows retry</idea>
+    </ideas>
+  </tests>
+</story-context>

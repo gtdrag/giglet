@@ -1,0 +1,95 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>7</epicId>
+    <storyId>3</storyId>
+    <title>Date Range Selection for Exports</title>
+    <status>drafted</status>
+    <generatedAt>2026-01-04</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/7-3-date-range-selection-for-exports.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>Pro subscriber exporting tax documents</asA>
+    <iWant>to select date ranges using presets (This Year, Last Year, Q1-Q4) or custom dates</iWant>
+    <soThat>I can generate exports for specific tax periods quickly and accurately</soThat>
+    <tasks>
+      <task id="1" ac="1">Verify Date Range Presets - Confirm all presets appear in DateRangeSelector modal</task>
+      <task id="2" ac="2">Verify Custom Range Selection - Test iOS/Android date picker workflows</task>
+      <task id="3" ac="3">Verify Export Preview Counts - Test mileage/earnings preview shows correct counts</task>
+      <task id="4" ac="1,4">Add Unit Tests for Date Range Utils - ALREADY COMPLETE (dateRange.test.ts exists with 22 tests)</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">Given I am exporting mileage or earnings, When I reach date selection, Then I see presets: This Year, Last Year, Q1-Q4, This Month, Custom</criterion>
+    <criterion id="2">Given I select Custom, When I pick start and end dates, Then the export reflects my selection</criterion>
+    <criterion id="3">Given I select a date range, When the preview loads, Then I see "X trips" or "Y deliveries" count</criterion>
+    <criterion id="4">Given I select "Last Year", When the export generates, Then it covers Jan 1 - Dec 31 of the previous year</criterion>
+  </acceptanceCriteria>
+
+  <implementationStatus>
+    <note>ALREADY IMPLEMENTED: All acceptance criteria were delivered as part of Stories 7.1 and 7.2. This story focuses on verification only.</note>
+    <acStatus ac="1" status="complete" location="apps/mobile/src/utils/dateRange.ts:5-13,147-156" />
+    <acStatus ac="2" status="complete" location="apps/mobile/src/components/DateRangeSelector.tsx:161-243" />
+    <acStatus ac="3" status="complete" location="apps/mobile/app/tax-export.tsx (preview sections)" />
+    <acStatus ac="4" status="complete" location="apps/mobile/src/utils/dateRange.ts:36-41" />
+  </implementationStatus>
+
+  <artifacts>
+    <docs>
+      <doc path=".bmad-ephemeral/stories/tech-spec-epic-7.md" title="Epic 7 Technical Specification" section="Story 7.3: Date Range Selection" snippet="AC 7.3.1-7.3.4 define date range preset requirements. Presets: This Year, Last Year, Q1-Q4, This Month, Custom." />
+      <doc path=".bmad-ephemeral/stories/7-2-earnings-summary-export.md" title="Story 7.2 - Previous Story" section="Dev Agent Record" snippet="DateRangeSelector fully functional at src/components/DateRangeSelector.tsx. All preset calculations at src/utils/dateRange.ts verified working." />
+      <doc path="docs/architecture.md" title="Architecture" section="Mobile App" snippet="Expo SDK 54, React Native 0.81, Zustand state management. Client-side generation using expo-print for PDF." />
+    </docs>
+    <code>
+      <file path="apps/mobile/src/utils/dateRange.ts" kind="utility" symbol="DateRangePreset, DateRange, getPresetDateRange, DATE_RANGE_PRESETS" lines="1-157" reason="Core date range types and preset calculation functions - all presets implemented" />
+      <file path="apps/mobile/src/components/DateRangeSelector.tsx" kind="component" symbol="DateRangeSelector" lines="1-376" reason="Reusable date range selection component with preset list and custom date pickers for iOS/Android" />
+      <file path="apps/mobile/app/tax-export.tsx" kind="screen" symbol="TaxExportScreen" lines="1-838" reason="Tax export screen using DateRangeSelector for both mileage and earnings exports with preview" />
+      <file path="apps/mobile/src/services/export.ts" kind="service" symbol="getExportPreview, getEarningsExportPreview" lines="118-319" reason="Export preview functions returning trip/delivery counts for date range" />
+      <file path="apps/mobile/src/utils/__tests__/dateRange.test.ts" kind="test" symbol="dateRange utilities tests" lines="1-211" reason="EXISTING comprehensive unit tests (22 tests) covering all presets, formatting, and labels - Task 4 already complete" />
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="@react-native-community/datetimepicker" version="8.4.4" purpose="Native date picker for custom date selection" />
+        <package name="expo" version="~54.0.30" purpose="Expo SDK framework" />
+        <package name="vitest" version="^4.0.16" purpose="Test framework" />
+        <package name="zustand" version="^5.0.9" purpose="State management" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint source="architecture">Client-side date range calculation - no API calls needed</constraint>
+    <constraint source="dev-notes">Verification story - core functionality already implemented in Stories 7.1 and 7.2</constraint>
+    <constraint source="testing">Use Vitest with explicit local dates (new Date(2025, 0, 15)) to avoid timezone issues</constraint>
+    <constraint source="ui">Platform-specific date picker handling - iOS compact mode, Android modal</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="DateRangePreset" kind="type" signature="'this_year' | 'last_year' | 'q1' | 'q2' | 'q3' | 'q4' | 'this_month' | 'custom'" path="apps/mobile/src/utils/dateRange.ts:5-13" />
+    <interface name="DateRange" kind="interface" signature="{ startDate: Date; endDate: Date; preset: DateRangePreset }" path="apps/mobile/src/utils/dateRange.ts:15-19" />
+    <interface name="getPresetDateRange" kind="function" signature="(preset: DateRangePreset): DateRange" path="apps/mobile/src/utils/dateRange.ts:24-88" />
+    <interface name="getExportPreview" kind="function" signature="(dateRange: DateRange): Promise<ExportPreview>" path="apps/mobile/src/services/export.ts:118-127" />
+    <interface name="getEarningsExportPreview" kind="function" signature="(dateRange: DateRange): Promise<EarningsExportPreview>" path="apps/mobile/src/services/export.ts:307-319" />
+    <interface name="DateRangeSelector" kind="component" signature="({ value: DateRange, onChange: (range: DateRange) => void })" path="apps/mobile/src/components/DateRangeSelector.tsx:27-30" />
+  </interfaces>
+
+  <tests>
+    <standards>Vitest test framework with vi.useFakeTimers() for date mocking. Use explicit local dates (new Date(year, month, day)) to avoid timezone issues. Tests located alongside source in __tests__ directories.</standards>
+    <locations>
+      <location>apps/mobile/src/utils/__tests__/*.test.ts</location>
+      <location>apps/mobile/src/services/__tests__/*.test.ts</location>
+      <location>apps/mobile/src/services/export/__tests__/*.test.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="1">ALREADY TESTED: dateRange.test.ts:195-209 verifies DATE_RANGE_PRESETS contains all 8 presets</idea>
+      <idea ac="1">ALREADY TESTED: dateRange.test.ts:166-192 verifies getPresetLabel() returns correct labels with dynamic year</idea>
+      <idea ac="4">ALREADY TESTED: dateRange.test.ts:42-52 verifies last_year returns Jan 1 - Dec 31 of previous year</idea>
+      <idea ac="1">ALREADY TESTED: dateRange.test.ts:54-93 verifies all quarterly presets (Q1-Q4) calculate correct boundaries</idea>
+      <idea ac="2">MANUAL TEST: Verify iOS date picker compact mode works in DateRangeSelector</idea>
+      <idea ac="2">MANUAL TEST: Verify Android date picker modal mode works in DateRangeSelector</idea>
+      <idea ac="3">MANUAL TEST: Verify preview updates when date range changes in tax-export.tsx</idea>
+    </ideas>
+  </tests>
+</story-context>

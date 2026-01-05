@@ -15,7 +15,9 @@ import { ManualDeliveryModal } from '../../src/components/ManualDeliveryModal';
 import { PlatformBreakdownChart } from '../../src/components/PlatformBreakdownChart';
 import { PeriodComparisonCard } from '../../src/components/PeriodComparisonCard';
 import { HourlyRateCard } from '../../src/components/HourlyRateCard';
+import { PaywallModal } from '../../src/components/subscriptions/PaywallModal';
 import { useEarningsStore } from '../../src/stores/earningsStore';
+import { useSubscription } from '../../src/hooks/useSubscription';
 import type { EarningsPeriod } from '../../src/services/earnings';
 
 // Period display labels
@@ -43,8 +45,21 @@ function formatCurrency(amount: number): string {
 
 export default function DashboardPage() {
   const [showManualModal, setShowManualModal] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [paywallFeature, setPaywallFeature] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [comparisonRefresh, setComparisonRefresh] = useState(0);
+
+  // Subscription state
+  const { canAccess } = useSubscription();
+
+  // Handler for tapping Pro-gated features
+  const handleProFeatureTap = useCallback((feature: string) => {
+    if (!canAccess(feature)) {
+      setPaywallFeature(feature);
+      setShowPaywall(true);
+    }
+  }, [canAccess]);
 
   // Connect to earnings store
   const {
@@ -263,7 +278,10 @@ export default function DashboardPage() {
         </View>
 
         {/* Tax Export Card (Pro) */}
-        <View style={styles.card}>
+        <Pressable
+          style={styles.card}
+          onPress={() => handleProFeatureTap('taxExport')}
+        >
           <View style={styles.cardHeader}>
             <View style={styles.cardIconContainer}>
               <Ionicons name="document-text" size={20} color="#EAB308" />
@@ -274,12 +292,12 @@ export default function DashboardPage() {
             </View>
           </View>
           <Text style={styles.cardSubtext}>Export mileage log & earnings for taxes</Text>
-          <Pressable style={[styles.cardLink, styles.cardLinkDisabled]}>
+          <View style={[styles.cardLink, styles.cardLinkDisabled]}>
             <Ionicons name="lock-closed" size={14} color="#71717A" />
             <Text style={styles.cardLinkTextDisabled}>Upgrade to Pro</Text>
             <Ionicons name="chevron-forward" size={16} color="#71717A" />
-          </Pressable>
-        </View>
+          </View>
+        </Pressable>
 
         {/* Settings Card */}
         <Pressable style={styles.card} onPress={() => router.push('/accounts')}>
@@ -298,6 +316,12 @@ export default function DashboardPage() {
         visible={showManualModal}
         onClose={() => setShowManualModal(false)}
         onSuccess={handleManualDeliverySuccess}
+      />
+
+      <PaywallModal
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        feature={paywallFeature}
       />
     </SafeAreaView>
   );

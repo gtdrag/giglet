@@ -1,0 +1,482 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context version="1.0" generated="2026-01-05">
+  <story-reference>
+    <id>9-5</id>
+    <title>Logout</title>
+    <epic>Epic 9: Settings &amp; Profile</epic>
+    <status>ready-for-dev</status>
+  </story-reference>
+
+  <acceptance-criteria>
+    <ac id="AC-9.5.1">
+      <description>Given I am logged in, When I tap "Log Out", Then I see confirmation prompt, And if confirmed, I am logged out, And I am returned to the login screen, And my local session data is cleared.</description>
+      <source>tech-spec-epic-9.md</source>
+    </ac>
+    <ac id="AC-9.5.2">
+      <description>Given I have mileage tracking enabled, When I log out, Then background tracking stops.</description>
+      <source>tech-spec-epic-9.md</source>
+    </ac>
+  </acceptance-criteria>
+
+  <logout-flow>
+    <step order="1">User taps "Log Out" in Settings</step>
+    <step order="2">App shows confirmation prompt</step>
+    <step order="3">User confirms</step>
+    <step order="4">App calls POST /auth/logout (revokes refresh token)</step>
+    <step order="5">App clears secure storage (access + refresh tokens)</step>
+    <step order="6">App clears all Zustand stores</step>
+    <step order="7">App stops background location tracking</step>
+    <step order="8">App navigates to login screen</step>
+  </logout-flow>
+
+  <data-to-clear>
+    <item storage="SecureStore" key="accessToken" clear="yes">via clearTokens()</item>
+    <item storage="SecureStore" key="refreshToken" clear="yes">via clearTokens()</item>
+    <item storage="authStore" key="user,isAuthenticated" clear="yes">Zustand state reset</item>
+    <item storage="subscriptionStore" key="tier,isProUser" clear="yes">Zustand state reset</item>
+    <item storage="RevenueCat" key="customerInfo" clear="yes">via logoutUser()</item>
+    <item storage="mileageStore" key="tracking" clear="stop">Stop background GPS via disableTracking()</item>
+    <item storage="settingsStore" key="preferences" clear="no">User preferences persist</item>
+  </data-to-clear>
+
+  <existing-implementation>
+    <summary>Logout UI and basic functionality already implemented. Story focuses on server-side token revocation, stopping background tracking, and complete state cleanup.</summary>
+
+    <ui-exists location="accounts.tsx:141-160">
+      <description>handleSignOut function with Alert confirmation dialog</description>
+    </ui-exists>
+    <ui-exists location="accounts.tsx:356-372">
+      <description>Sign Out button component</description>
+    </ui-exists>
+    <store-exists location="authStore.ts:45-49">
+      <description>logout() action - calls logoutService(), logoutUser(), resets state</description>
+    </store-exists>
+    <service-exists location="auth.ts:158-160">
+      <description>logout() - only calls clearTokens(), does NOT call backend</description>
+    </service-exists>
+    <backend-exists location="auth.routes.ts:49">
+      <description>POST /auth/logout route defined</description>
+    </backend-exists>
+    <backend-exists location="auth.controller.ts:84-93">
+      <description>logout controller - extracts refreshToken from body, calls authService.logout</description>
+    </backend-exists>
+    <backend-exists location="auth.service.ts:169-174">
+      <description>logout service - deletes refresh token from database</description>
+    </backend-exists>
+  </existing-implementation>
+
+  <gaps-to-implement>
+    <gap id="1" priority="high">
+      <description>Mobile logout should call POST /auth/logout with refreshToken BEFORE clearing tokens</description>
+      <location>apps/mobile/src/services/auth.ts:158-160</location>
+      <solution>Add api.post('/auth/logout', { refreshToken }) before clearTokens()</solution>
+    </gap>
+    <gap id="2" priority="high">
+      <description>Stop background location tracking on logout</description>
+      <location>apps/mobile/src/stores/authStore.ts:45-49</location>
+      <solution>Import mileageStore and call disableTracking() in logout action</solution>
+    </gap>
+    <gap id="3" priority="medium">
+      <description>Clear subscription store state on logout</description>
+      <location>apps/mobile/src/stores/authStore.ts:45-49</location>
+      <solution>Import subscriptionStore and reset tier to FREE</solution>
+    </gap>
+  </gaps-to-implement>
+
+  <code-artifacts>
+    <!-- Mobile UI -->
+    <artifact type="component" path="apps/mobile/app/accounts.tsx">
+      <section name="handleSignOut" lines="141-160">
+        <![CDATA[
+  const handleSignOut = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          setIsLoggingOut(true);
+          try {
+            await logout();
+            router.replace('/(auth)/login');
+          } catch {
+            Alert.alert('Error', 'Failed to sign out. Please try again.');
+          } finally {
+            setIsLoggingOut(false);
+          }
+        },
+      },
+    ]);
+  };
+        ]]>
+      </section>
+      <section name="SignOutButton" lines="356-372">
+        <![CDATA[
+        {/* Sign Out Section */}
+        <View style={styles.signOutSection}>
+          <Pressable
+            style={styles.signOutButton}
+            onPress={handleSignOut}
+            disabled={isLoggingOut}
+          >
+            {isLoggingOut ? (
+              <ActivityIndicator size="small" color="#EF4444" />
+            ) : (
+              <>
+                <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+                <Text style={styles.signOutButtonText}>Sign Out</Text>
+              </>
+            )}
+          </Pressable>
+        </View>
+        ]]>
+      </section>
+    </artifact>
+
+    <!-- Auth Store -->
+    <artifact type="store" path="apps/mobile/src/stores/authStore.ts">
+      <section name="imports" lines="1-6">
+        <![CDATA[
+import { create } from 'zustand';
+import * as authService from '../services/auth';
+import { isLoggedIn, logout as logoutService, deleteAccount as deleteAccountService } from '../services/auth';
+import { identifyUser, logoutUser } from '../services/subscriptions';
+import { router } from 'expo-router';
+import { Alert } from 'react-native';
+        ]]>
+      </section>
+      <section name="logout-action" lines="45-49">
+        <![CDATA[
+  logout: async () => {
+    await logoutService();
+    await logoutUser(); // Log out from RevenueCat
+    set({ isAuthenticated: false, user: null, error: null });
+  },
+        ]]>
+      </section>
+      <section name="deleteAccount-pattern" lines="51-75">
+        <![CDATA[
+  deleteAccount: async () => {
+    // Call the API to schedule account deletion
+    await deleteAccountService();
+
+    // Clear local state
+    await logoutService(); // Clear tokens
+    await logoutUser(); // Log out from RevenueCat
+
+    // Reset auth state
+    set({ isAuthenticated: false, user: null, error: null });
+
+    // Show success message and navigate to login
+    Alert.alert(
+      'Account Deletion Scheduled',
+      'Your account has been scheduled for deletion. You can recover your account by logging back in within 30 days.',
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            router.replace('/(auth)/login');
+          },
+        },
+      ]
+    );
+  },
+        ]]>
+      </section>
+    </artifact>
+
+    <!-- Auth Service (Mobile) -->
+    <artifact type="service" path="apps/mobile/src/services/auth.ts">
+      <section name="logout" lines="155-160">
+        <![CDATA[
+/**
+ * Logout user and clear tokens
+ */
+export async function logout(): Promise<void> {
+  await clearTokens();
+}
+        ]]>
+      </section>
+    </artifact>
+
+    <!-- API Service -->
+    <artifact type="service" path="apps/mobile/src/services/api.ts">
+      <section name="token-functions" lines="110-132">
+        <![CDATA[
+/**
+ * Store tokens securely
+ */
+export async function storeTokens(accessToken: string, refreshToken: string): Promise<void> {
+  await SecureStore.setItemAsync(TOKEN_KEYS.ACCESS_TOKEN, accessToken);
+  await SecureStore.setItemAsync(TOKEN_KEYS.REFRESH_TOKEN, refreshToken);
+}
+
+/**
+ * Clear stored tokens
+ */
+export async function clearTokens(): Promise<void> {
+  await SecureStore.deleteItemAsync(TOKEN_KEYS.ACCESS_TOKEN);
+  await SecureStore.deleteItemAsync(TOKEN_KEYS.REFRESH_TOKEN);
+}
+
+/**
+ * Check if user has stored tokens
+ */
+export async function hasStoredTokens(): Promise<boolean> {
+  const token = await SecureStore.getItemAsync(TOKEN_KEYS.ACCESS_TOKEN);
+  return !!token;
+}
+        ]]>
+      </section>
+      <section name="token-keys" lines="27-30">
+        <![CDATA[
+export const TOKEN_KEYS = {
+  ACCESS_TOKEN: 'giglet_access_token',
+  REFRESH_TOKEN: 'giglet_refresh_token',
+} as const;
+        ]]>
+      </section>
+    </artifact>
+
+    <!-- Mileage Store -->
+    <artifact type="store" path="apps/mobile/src/stores/mileageStore.ts">
+      <section name="imports" lines="1-23">
+        <![CDATA[
+import { create } from 'zustand';
+import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  startBackgroundTracking,
+  stopBackgroundTracking,
+  isBackgroundTrackingActive,
+  setTripStateCallback,
+  initializeTrackingService,
+  getCurrentTripState,
+  getActiveTripData,
+  forceEndTrip,
+  type TripState,
+  type ActiveTrip,
+  type CompletedTrip,
+} from '../services/locationTracking';
+        ]]>
+      </section>
+      <section name="disableTracking" lines="278-297">
+        <![CDATA[
+  // Disable tracking
+  disableTracking: async () => {
+    try {
+      // Stop background tracking
+      await stopBackgroundTracking();
+
+      // Save preference
+      await AsyncStorage.setItem(TRACKING_PREFERENCE_KEY, 'false');
+
+      set({
+        trackingEnabled: false,
+        tripState: 'IDLE',
+        activeTrip: null,
+        error: null,
+      });
+    } catch (error) {
+      console.error('Failed to disable tracking:', error);
+      set({ error: 'Failed to disable tracking' });
+    }
+  },
+        ]]>
+      </section>
+    </artifact>
+
+    <!-- Subscription Store -->
+    <artifact type="store" path="apps/mobile/src/stores/subscriptionStore.ts">
+      <section name="state-interface" lines="18-32">
+        <![CDATA[
+interface SubscriptionState {
+  tier: SubscriptionTier;
+  isProUser: boolean;
+  expiresAt: Date | null;
+  willRenew: boolean;
+  isCanceled: boolean;
+  isLoading: boolean;
+  error: string | null;
+
+  // Actions
+  loadSubscription: () => Promise<void>;
+  canAccess: (feature: string) => boolean;
+  setTier: (tier: SubscriptionTier) => void;
+  clearError: () => void;
+}
+        ]]>
+      </section>
+      <section name="setTier" lines="122-127">
+        <![CDATA[
+  setTier: (tier: SubscriptionTier) => {
+    set({
+      tier,
+      isProUser: tier !== 'FREE',
+    });
+  },
+        ]]>
+      </section>
+    </artifact>
+
+    <!-- Backend Routes -->
+    <artifact type="route" path="apps/api/src/routes/auth.routes.ts">
+      <section name="logout-route" lines="48-49">
+        <![CDATA[
+// Logout and revoke refresh token
+router.post('/logout', (req, res, next) => authController.logout(req, res, next));
+        ]]>
+      </section>
+    </artifact>
+
+    <!-- Backend Controller -->
+    <artifact type="controller" path="apps/api/src/controllers/auth.controller.ts">
+      <section name="logout" lines="80-93">
+        <![CDATA[
+  /**
+   * POST /api/v1/auth/logout
+   * Logout user by invalidating refresh token
+   */
+  async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { refreshToken } = req.body;
+      await authService.logout(refreshToken);
+
+      res.json(successResponse({ message: 'Logged out successfully' }));
+    } catch (error) {
+      next(error);
+    }
+  }
+        ]]>
+      </section>
+    </artifact>
+
+    <!-- Backend Service -->
+    <artifact type="service" path="apps/api/src/services/auth.service.ts">
+      <section name="logout" lines="166-174">
+        <![CDATA[
+  /**
+   * Logout user by invalidating refresh token
+   */
+  async logout(refreshToken: string): Promise<void> {
+    // Delete refresh token from database
+    await prisma.refreshToken.deleteMany({
+      where: { token: refreshToken },
+    });
+  }
+        ]]>
+      </section>
+    </artifact>
+
+    <!-- Test Patterns -->
+    <artifact type="test" path="apps/api/src/services/__tests__/auth.service.test.ts">
+      <section name="mock-setup" lines="1-68">
+        <![CDATA[
+/**
+ * Unit tests for Auth Service - Account Deletion
+ * Story 9-4: Account Deletion functionality
+ */
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Use vi.hoisted to properly define mocks before hoisting
+const mocks = vi.hoisted(() => ({
+  userFindUnique: vi.fn(),
+  userUpdate: vi.fn(),
+  refreshTokenDeleteMany: vi.fn(),
+  transaction: vi.fn(),
+}));
+
+// Mock bcryptjs
+vi.mock('bcryptjs', () => ({
+  default: {
+    hash: vi.fn().mockResolvedValue('hashed_password'),
+    compare: vi.fn().mockResolvedValue(true),
+  },
+}));
+
+// Mock Prisma with hoisted mocks
+vi.mock('../../lib/prisma', () => ({
+  prisma: {
+    user: {
+      findUnique: mocks.userFindUnique,
+      update: mocks.userUpdate,
+    },
+    refreshToken: {
+      deleteMany: mocks.refreshTokenDeleteMany,
+      create: vi.fn(),
+    },
+    $transaction: mocks.transaction,
+  },
+}));
+
+// Mock config
+vi.mock('../../config', () => ({
+  config: {
+    jwtSecret: 'test-secret',
+    accessTokenExpiresIn: '15m',
+    refreshTokenExpiresIn: '7d',
+    appleBundleId: 'com.test.app',
+    googleClientId: 'test-client-id',
+  },
+}));
+
+// Mock logger
+vi.mock('../../utils/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+  },
+}));
+
+// Mock jwt utils
+vi.mock('../../utils/jwt', () => ({
+  generateAccessToken: vi.fn().mockReturnValue('mock_access_token'),
+  generateRefreshToken: vi.fn().mockReturnValue('mock_refresh_token'),
+  parseExpiry: vi.fn().mockReturnValue(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+}));
+
+// Import after mocking
+import { authService } from '../auth.service';
+import { AppError } from '../../middleware/error.middleware';
+        ]]>
+      </section>
+    </artifact>
+  </code-artifacts>
+
+  <api-contract>
+    <endpoint method="POST" path="/api/v1/auth/logout">
+      <description>Logout user by invalidating refresh token</description>
+      <request>
+        <body>
+          <field name="refreshToken" type="string" required="true">The refresh token to invalidate</field>
+        </body>
+      </request>
+      <response status="200">
+        <body>
+          <field name="success" type="boolean">true</field>
+          <field name="data.message" type="string">"Logged out successfully"</field>
+        </body>
+      </response>
+    </endpoint>
+  </api-contract>
+
+  <learnings-from-previous-story>
+    <story id="9-4" title="Account Deletion">
+      <learning>Pattern: deleteAccount follows same flow as logout - API call, clearTokens(), logoutUser(), reset state, navigate</learning>
+      <learning>Navigation: Use router.replace('/(auth)/login') to prevent back navigation</learning>
+      <learning>Alert: Alert.alert() for confirmations with Cancel/Action buttons</learning>
+      <learning>Error handling: Try/catch with user-friendly Alert on failure</learning>
+      <learning>RevenueCat: Call logoutUser() from subscriptions service</learning>
+    </story>
+  </learnings-from-previous-story>
+
+  <implementation-notes>
+    <note priority="high">The mobile logout() function currently only clears tokens locally. It does NOT call the backend to revoke the refresh token. This is the primary gap to fix.</note>
+    <note priority="high">Background tracking is not stopped on logout. Import useMileageStore and call disableTracking().</note>
+    <note priority="medium">Subscription store state is not cleared on logout. Need to reset tier to FREE.</note>
+    <note priority="info">The logout UI (confirmation dialog, button, navigation) is already fully implemented and working.</note>
+    <note priority="info">Backend logout endpoint is fully implemented and tested - just needs to be called from mobile.</note>
+  </implementation-notes>
+</story-context>

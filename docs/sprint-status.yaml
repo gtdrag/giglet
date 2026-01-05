@@ -126,13 +126,13 @@ development_status:
   # ============================================
   # Epic 7: Tax Export (5 stories)
   # ============================================
-  epic-7: backlog
-  7-1-irs-mileage-log-export: backlog
-  7-2-earnings-summary-export: backlog
-  7-3-date-range-selection-for-exports: backlog
-  7-4-ytd-tax-deduction-display: backlog
-  7-5-export-share-and-email: backlog
-  epic-7-retrospective: optional
+  epic-7: contexted
+  7-1-irs-mileage-log-export: done
+  7-2-earnings-summary-export: done
+  7-3-date-range-selection-for-exports: done
+  7-4-ytd-tax-deduction-display: done
+  7-5-export-share-and-email: done
+  epic-7-retrospective: completed
 
   # ============================================
   # Epic 8: Subscription & Payments (6 stories)
@@ -145,23 +145,23 @@ development_status:
   8-4-subscription-status-display: done
   8-5-subscription-cancellation-handling: done
   8-6-purchase-restoration: done
-  epic-8-retrospective: optional
+  epic-8-retrospective: completed
 
   # ============================================
   # Epic 9: Settings & Profile (5 stories)
   # ============================================
-  epic-9: backlog
-  9-1-profile-view-and-edit: backlog
-  9-2-notification-preferences: backlog
-  9-3-privacy-policy-and-terms-of-service: backlog
-  9-4-account-deletion: backlog
-  9-5-logout: backlog
-  epic-9-retrospective: optional
+  epic-9: contexted
+  9-1-profile-view-and-edit: done
+  9-2-notification-preferences: done
+  9-3-privacy-policy-and-terms-of-service: done
+  9-4-account-deletion: done
+  9-5-logout: done
+  epic-9-retrospective: completed
 
   # ============================================
   # Epic 10: Tip Tracker (4 stories)
   # ============================================
-  epic-10: backlog
+  epic-10: contexted
   10-1-tip-logging-button-and-ui: backlog
   10-2-tip-location-storage-backend: backlog
   10-3-tip-locations-map-layer: backlog

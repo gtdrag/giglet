@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authController } from '../controllers/auth.controller';
 import { validate } from '../middleware/validate.middleware';
+import { requireAuth } from '../middleware/auth.middleware';
 import {
   RegisterSchema,
   LoginSchema,
@@ -10,6 +11,7 @@ import {
   ForgotPasswordSchema,
   ResetPasswordSchema,
 } from '../schemas/auth.schema';
+import { UpdateProfileSchema } from '../schemas/user.schema';
 
 const router = Router();
 
@@ -24,6 +26,8 @@ const router = Router();
  * POST /api/v1/auth/reset-password  - Reset password with token
  * POST /api/v1/auth/refresh         - Refresh access token
  * POST /api/v1/auth/logout          - Logout and revoke refresh token
+ * GET  /api/v1/auth/me              - Get current user profile with subscription
+ * PUT  /api/v1/auth/me              - Update current user profile (name only)
  */
 
 // Register a new user
@@ -62,6 +66,21 @@ router.post('/forgot-password', validate(ForgotPasswordSchema), (req, res, next)
 // Reset password with token
 router.post('/reset-password', validate(ResetPasswordSchema), (req, res, next) =>
   authController.resetPassword(req, res, next)
+);
+
+// Get current user profile (requires authentication)
+router.get('/me', requireAuth, (req, res, next) =>
+  authController.getMe(req, res, next)
+);
+
+// Update current user profile (requires authentication)
+router.put('/me', requireAuth, validate(UpdateProfileSchema), (req, res, next) =>
+  authController.updateMe(req, res, next)
+);
+
+// Delete user account (soft delete with 30-day grace period)
+router.delete('/account', requireAuth, (req, res, next) =>
+  authController.deleteAccount(req, res, next)
 );
 
 export default router;

@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context story-id="8-3" title="Pro Annual Subscription Purchase" generated="2026-01-04">
+
+  <!-- DOCUMENTATION ARTIFACTS -->
+  <documentation-artifacts>
+
+    <artifact type="tech-spec" path=".bmad-ephemeral/stories/tech-spec-epic-8.md">
+      <summary>Technical specification for Epic 8 - Subscription and Payments</summary>
+      <relevant-sections>
+        <section id="5.2" title="RevenueCat Configuration">
+          Product: giglet_pro_annual | Type: Auto-renewable | Price: $34.99/year | 42% savings
+          Entitlement: "pro" (same as monthly)
+        </section>
+        <section id="7" title="Story 8.3 Technical Details">
+          Implementation: Same flow as 8.2, different product ID. Add savings badge UI element.
+          Files to modify: apps/mobile/src/components/subscriptions/PricingCard.tsx - Add annual option
+        </section>
+        <section id="2.2" title="Data Flow">
+          Purchase Flow: User initiates purchase → RevenueCat SDK handles IAP → webhook to backend → updates Subscription record → app refreshes status
+        </section>
+      </relevant-sections>
+    </artifact>
+
+    <artifact type="story-learnings" path=".bmad-ephemeral/stories/8-2-pro-monthly-subscription-purchase.md">
+      <summary>Learnings from Story 8-2 (Pro Monthly) - CRITICAL: Annual already implemented</summary>
+      <key-learnings>
+        <learning priority="critical">
+          Annual Already Implemented: purchaseAnnual() function created alongside purchaseMonthly() in Story 8-2.
+          Both use same pattern via purchasePackage() helper.
+        </learning>
+        <learning priority="critical">
+          UI Complete: PaywallModal includes both monthly and annual pricing cards with plan selection state management.
+          Annual shows $34.99/year, $2.92/mo equivalent, "Save 42%" badge.
+        </learning>
+        <learning priority="critical">
+          Backend Ready: giglet_pro_annual → PRO_ANNUAL mapping already in PRODUCT_TIER_MAP in subscriptions.service.ts.
+          Webhook handler supports annual subscriptions identically to monthly.
+        </learning>
+        <learning priority="high">
+          Expo Go Fix: Lazy loading pattern used for RevenueCat SDK to handle missing native modules gracefully.
+          Check isRevenueCatAvailable flag before all SDK calls.
+        </learning>
+        <learning priority="medium">
+          Testing Gap: Unit tests for subscription components still needed.
+        </learning>
+      </key-learnings>
+    </artifact>
+
+  </documentation-artifacts>
+
+  <!-- CODE ARTIFACTS -->
+  <code-artifacts>
+
+    <artifact type="service" path="apps/mobile/src/services/subscriptions.ts">
+      <summary>RevenueCat wrapper service with lazy loading for Expo Go compatibility</summary>
+      <key-exports>
+        <export name="purchaseAnnual" line="266-289">
+          Annual purchase function - already implemented in Story 8-2.
+          Returns true if purchase successful, false if cancelled.
+          Throws SubscriptionError on failure.
+        </export>
+        <export name="getAnnualPackage" line="164-167">
+          Fetches annual package from RevenueCat offerings.current.annual
+        </export>
+        <export name="isSubscriptionServiceAvailable" line="54-56">
+          Returns isRevenueCatAvailable flag - check before purchase operations.
+        </export>
+        <export name="SubscriptionError" line="61-71">
+          Custom error class with code, message, userCancelled properties.
+        </export>
+        <export name="getSubscriptionDetails" line="319-357">
+          Extracts tier (FREE/PRO_MONTHLY/PRO_ANNUAL), expiresAt, willRenew from customerInfo.
+        </export>
+      </key-exports>
+      <constants>
+        <const name="ANNUAL_PRODUCT_ID" value="giglet_pro_annual" line="30"/>
+        <const name="PRO_ENTITLEMENT" value="pro" line="26"/>
+      </constants>
+      <patterns>
+        <pattern name="lazy-loading">
+          Uses try-catch require() instead of ES6 import to avoid Expo Go crash.
+          Sets isRevenueCatAvailable = false on load failure.
+        </pattern>
+        <pattern name="purchase-flow">
+          getAnnualPackage() → purchasePackage(pkg) → check customerInfo.entitlements.active['pro']
+        </pattern>
+      </patterns>
+    </artifact>
+
+    <artifact type="component" path="apps/mobile/src/components/subscriptions/PaywallModal.tsx">
+      <summary>Modal with monthly/annual plan selection and purchase flow</summary>
+      <key-features>
+        <feature name="plan-selection" lines="63,158-199">
+          State: selectedPlan: 'monthly' | 'annual' (defaults to 'annual')
+          Two Pressable pricing cards for monthly ($4.99/mo) and annual ($34.99/year)
+        </feature>
+        <feature name="annual-pricing-ui" lines="176-198">
+          Shows: "Save 42%" badge, $34.99/year price, $2.92/mo equivalent
+          Highlighted styling (pricingCardHighlighted)
+        </feature>
+        <feature name="purchase-handler" lines="76-102">
+          handlePurchase: Calls purchaseMonthly() or purchaseAnnual() based on selectedPlan
+          On success: loadSubscription() → onUpgrade?.() → onClose()
+        </feature>
+        <feature name="error-handling" lines="202-210">
+          Shows error message with Retry button (calls handleRetry)
+          SubscriptionError.message displayed to user
+        </feature>
+      </key-features>
+    </artifact>
+
+    <artifact type="service" path="apps/api/src/services/subscriptions.service.ts">
+      <summary>Backend webhook handler for RevenueCat events</summary>
+      <key-features>
+        <feature name="product-tier-mapping" lines="7-10">
+          PRODUCT_TIER_MAP: giglet_pro_monthly → PRO_MONTHLY, giglet_pro_annual → PRO_ANNUAL
+        </feature>
+        <feature name="initial-purchase-handler" lines="80-122">
+          handleInitialPurchase: Looks up tier from PRODUCT_TIER_MAP, upserts Subscription record
+          Sets tier (PRO_ANNUAL for annual), status ACTIVE, currentPeriodEnd from expiration_at_ms
+        </feature>
+        <feature name="subscription-status" lines="245-277">
+          getSubscriptionStatus: Returns tier, status, currentPeriodStart, currentPeriodEnd, isProUser
+        </feature>
+      </key-features>
+    </artifact>
+
+    <artifact type="store" path="apps/mobile/src/stores/subscriptionStore.ts">
+      <summary>Zustand store for subscription state management</summary>
+      <key-features>
+        <feature name="state">
+          tier: 'FREE' | 'PRO_MONTHLY' | 'PRO_ANNUAL'
+          isProUser: boolean
+          expiresAt: Date | null
+        </feature>
+        <feature name="loadSubscription">
+          Fetches from /auth/me endpoint and updates store state.
+          Called after successful purchase to refresh status.
+        </feature>
+        <feature name="canAccess">
+          Feature gating: returns true for Pro users, checks PRO_FEATURES array for free tier.
+        </feature>
+      </key-features>
+    </artifact>
+
+  </code-artifacts>
+
+  <!-- INTERFACES AND CONTRACTS -->
+  <interfaces>
+
+    <interface name="SubscriptionTier" source="prisma">
+      <values>FREE | PRO_MONTHLY | PRO_ANNUAL</values>
+    </interface>
+
+    <interface name="SubscriptionStatus" source="prisma">
+      <values>ACTIVE | EXPIRED | CANCELED | GRACE_PERIOD</values>
+    </interface>
+
+    <interface name="RevenueCatWebhookEvent" source="apps/api/src/schemas/subscriptions.schema.ts">
+      <properties>
+        <property name="type" type="string" values="INITIAL_PURCHASE | RENEWAL | CANCELLATION | EXPIRATION | BILLING_ISSUE | PRODUCT_CHANGE | TEST"/>
+        <property name="app_user_id" type="string"/>
+        <property name="product_id" type="string" optional="true"/>
+        <property name="purchased_at_ms" type="number" optional="true"/>
+        <property name="expiration_at_ms" type="number" optional="true"/>
+      </properties>
+    </interface>
+
+  </interfaces>
+
+  <!-- CONSTRAINTS AND REQUIREMENTS -->
+  <constraints>
+
+    <constraint type="product-config">
+      RevenueCat product ID must be "giglet_pro_annual" to map to PRO_ANNUAL tier.
+      Both monthly and annual share the "pro" entitlement.
+    </constraint>
+
+    <constraint type="pricing">
+      Annual: $34.99/year ($2.92/month equivalent)
+      Monthly: $4.99/month
+      Savings: 42% (displayed in UI)
+    </constraint>
+
+    <constraint type="platform">
+      RevenueCat SDK not available in Expo Go - use isSubscriptionServiceAvailable() check.
+      Must use development build for testing actual purchases.
+    </constraint>
+
+    <constraint type="webhook">
+      Backend expects webhook at POST /api/v1/subscriptions/webhook
+      Signature verified via REVENUECAT_WEBHOOK_SECRET (skipped if not configured)
+    </constraint>
+
+  </constraints>
+
+  <!-- TESTING STANDARDS -->
+  <testing>
+
+    <requirement type="verification">
+      Story 8-3 is primarily verification - all code already exists from Story 8-2.
+      Focus on testing annual-specific paths end-to-end.
+    </requirement>
+
+    <test-ideas>
+      <idea priority="high">
+        Sandbox annual purchase on iOS: Select annual plan → complete purchase → verify PRO_ANNUAL in database
+      </idea>
+      <idea priority="high">
+        Sandbox annual purchase on Android: Same flow as iOS
+      </idea>
+      <idea priority="high">
+        Webhook test: Send INITIAL_PURCHASE with product_id=giglet_pro_annual → verify tier=PRO_ANNUAL
+      </idea>
+      <idea priority="medium">
+        Error handling: Simulate purchase cancellation → verify graceful handling
+      </idea>
+      <idea priority="medium">
+        Subscription display: After annual purchase → verify "Pro Annual" tier in status
+      </idea>
+    </test-ideas>
+
+    <existing-tests>
+      <test path="apps/api/src/**/*.test.ts">99 API tests passing</test>
+      <test path="apps/mobile/src/**/*.test.ts">163 mobile tests passing</test>
+    </existing-tests>
+
+  </testing>
+
+  <!-- STORY-SPECIFIC GUIDANCE -->
+  <guidance>
+
+    <note type="implementation">
+      This story is VERIFICATION ONLY. All code was implemented in Story 8-2.
+      Tasks focus on testing the annual purchase flow end-to-end.
+    </note>
+
+    <note type="key-verification-points">
+      1. purchaseAnnual() in subscriptions.ts:266-289 works correctly
+      2. PaywallModal annual selection triggers purchaseAnnual()
+      3. Backend maps giglet_pro_annual to PRO_ANNUAL tier
+      4. currentPeriodEnd set to 1 year from purchase for annual
+      5. Subscription status displays "Pro Annual" after purchase
+    </note>
+
+    <note type="sandbox-testing">
+      Use App Store Sandbox / Google Play test tracks.
+      RevenueCat sandbox mode should be enabled.
+      Test user accounts needed for sandbox purchases.
+    </note>
+
+  </guidance>
+
+</story-context>

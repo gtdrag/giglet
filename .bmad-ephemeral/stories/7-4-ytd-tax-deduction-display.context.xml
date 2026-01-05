@@ -1,0 +1,187 @@
+<story-context id="bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>7</epicId>
+    <storyId>4</storyId>
+    <title>YTD Tax Deduction Display</title>
+    <status>drafted</status>
+    <generatedAt>2026-01-05</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/7-4-ytd-tax-deduction-display.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>gig driver tracking my mileage</asA>
+    <iWant>to see my year-to-date miles and estimated tax deduction prominently displayed</iWant>
+    <soThat>I can quickly understand my potential tax savings without generating a full export</soThat>
+    <tasks>
+      <task id="1" ac="1,2">Create YTD Summary Card Component
+        <subtask>Create YTDSummaryCard.tsx in src/components/</subtask>
+        <subtask>Display "YTD: X miles" with prominent styling</subtask>
+        <subtask>Display "Est. Deduction: $Y" using formatTaxDeduction()</subtask>
+        <subtask>Include info icon button for rate explanation</subtask>
+      </task>
+      <task id="2" ac="3">Implement Info Tooltip/Modal
+        <subtask>Create reusable info modal or tooltip component</subtask>
+        <subtask>Content: IRS standard mileage rate explanation</subtask>
+        <subtask>Include rate value ($0.67/mile for 2024)</subtask>
+        <subtask>Add link/note about annual rate changes</subtask>
+        <subtask>Style consistent with existing modal patterns</subtask>
+      </task>
+      <task id="3" ac="1,2,4">Integrate YTD Card into Mileage Tab
+        <subtask>Add YTDSummaryCard to mileage.tsx (tracking enabled view)</subtask>
+        <subtask>Position prominently above or below period cards</subtask>
+        <subtask>Ensure yearMiles calculation uses current year filter</subtask>
+        <subtask>Verify reset behavior on year boundary</subtask>
+      </task>
+      <task id="4" ac="1,2">Optionally Display on Tax Export Screen
+        <subtask>Add YTD summary to tax-export.tsx header area</subtask>
+        <subtask>Show current year deduction estimate before export selection</subtask>
+      </task>
+      <task id="5" ac="2,4">Add Unit Tests
+        <subtask>Test YTD calculation resets at year boundary</subtask>
+        <subtask>Test deduction calculation accuracy</subtask>
+        <subtask>Test info modal content rendering</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">Given I have tracked mileage, When I view the Mileage tab, Then I see "YTD: X miles" displayed clearly</criterion>
+    <criterion id="2">Given I have YTD miles, When I view the deduction display, Then it shows "Est. Deduction: $Y" calculated as miles x $0.67</criterion>
+    <criterion id="3">Given I tap the info icon next to the deduction, When the tooltip/modal appears, Then it explains the IRS standard mileage rate for business use</criterion>
+    <criterion id="4">Given it is January 1 of a new year, When I view YTD mileage, Then the calculation resets fresh for the new year</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-7.md</path>
+        <title>Epic 7 Technical Specification: Tax Export</title>
+        <section>Story 7.4: YTD Tax Deduction Display</section>
+        <snippet>AC 7.4.1-7.4.4 define YTD display requirements. Rate: $0.67/mile for 2024. Client-side calculation using mileageStore.yearMiles.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Giglet Architecture Document</title>
+        <section>Mobile Client Architecture</section>
+        <snippet>Expo SDK 54, React Native 0.81, Zustand for state management. Component structure follows app/(tabs)/ for tab screens.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <file>
+        <path>apps/mobile/src/constants/tax.ts</path>
+        <kind>constants</kind>
+        <symbol>IRS_MILEAGE_RATE, calculateTaxDeduction, formatTaxDeduction, formatUSD</symbol>
+        <lines>1-51</lines>
+        <reason>Core tax calculation utilities - REUSE these, do not recreate</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/constants/__tests__/tax.test.ts</path>
+        <kind>test</kind>
+        <symbol>Tax Constants, calculateTaxDeduction, formatUSD, formatTaxDeduction</symbol>
+        <lines>1-99</lines>
+        <reason>18 existing tests for tax calculations - follow patterns for new tests</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/stores/mileageStore.ts</path>
+        <kind>store</kind>
+        <symbol>useMileageStore, yearMiles, yearTrips</symbol>
+        <lines>43-50, 314-334</lines>
+        <reason>Source of YTD mileage data - yearMiles already filters by current calendar year</reason>
+      </file>
+      <file>
+        <path>apps/mobile/app/(tabs)/mileage.tsx</path>
+        <kind>screen</kind>
+        <symbol>MileagePage, periodStats, formatTaxDeduction usage</symbol>
+        <lines>51-57, 264-271</lines>
+        <reason>Target screen for YTD display integration - has existing tax estimate display pattern</reason>
+      </file>
+      <file>
+        <path>apps/mobile/app/tax-export.tsx</path>
+        <kind>screen</kind>
+        <symbol>TaxExportScreen</symbol>
+        <reason>Optional location for YTD summary header</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/components/MileageStatsCard.tsx</path>
+        <kind>component</kind>
+        <symbol>MileageStatsCardCompact</symbol>
+        <reason>Reference for YTDSummaryCard styling and structure</reason>
+      </file>
+    </code>
+    <dependencies>
+      <node>
+        <package>expo</package><version>~54.0.30</version>
+        <package>react</package><version>19.1.0</version>
+        <package>react-native</package><version>0.81.5</version>
+        <package>zustand</package><version>^5.0.9</version>
+        <package>@expo/vector-icons</package><version>^15.0.3</version>
+        <package>vitest</package><version>^4.0.16</version>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">Client-side calculation only - no API calls required for YTD display</constraint>
+    <constraint type="pattern">Use Zustand store pattern - import from useMileageStore</constraint>
+    <constraint type="pattern">Follow existing modal patterns in mileage.tsx for info tooltip</constraint>
+    <constraint type="style">Match existing card styling (backgroundColor: #18181B, borderRadius: 16, borderColor: #27272A)</constraint>
+    <constraint type="testing">All new functions must have unit tests using Vitest</constraint>
+    <constraint type="reuse">MUST use existing IRS_MILEAGE_RATE and formatTaxDeduction from tax.ts - DO NOT recreate</constraint>
+    <constraint type="data">yearMiles from mileageStore already filters by current calendar year - no additional filtering needed</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>useMileageStore</name>
+      <kind>Zustand hook</kind>
+      <signature>const { yearMiles, yearTrips, loadTripStats } = useMileageStore()</signature>
+      <path>apps/mobile/src/stores/mileageStore.ts</path>
+    </interface>
+    <interface>
+      <name>IRS_MILEAGE_RATE</name>
+      <kind>constant</kind>
+      <signature>export const IRS_MILEAGE_RATE = 0.67</signature>
+      <path>apps/mobile/src/constants/tax.ts</path>
+    </interface>
+    <interface>
+      <name>calculateTaxDeduction</name>
+      <kind>function</kind>
+      <signature>calculateTaxDeduction(miles: number, rate?: number): number</signature>
+      <path>apps/mobile/src/constants/tax.ts</path>
+    </interface>
+    <interface>
+      <name>formatTaxDeduction</name>
+      <kind>function</kind>
+      <signature>formatTaxDeduction(miles: number, rate?: number): string</signature>
+      <path>apps/mobile/src/constants/tax.ts</path>
+    </interface>
+    <interface>
+      <name>formatUSD</name>
+      <kind>function</kind>
+      <signature>formatUSD(amount: number): string</signature>
+      <path>apps/mobile/src/constants/tax.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Vitest is the testing framework (vitest ^4.0.16). Tests use describe/it/expect pattern.
+      Use vi.useFakeTimers() and vi.setSystemTime() for date-dependent tests (year boundary).
+      Tests are co-located with source in __tests__ directories.
+      Minimum 80% coverage for new code per tech-spec.
+    </standards>
+    <locations>
+      <location>apps/mobile/src/**/__tests__/*.test.ts</location>
+      <location>apps/mobile/src/**/__tests__/*.test.tsx</location>
+    </locations>
+    <ideas>
+      <idea ac="1,2">Test YTDSummaryCard renders correct miles and deduction values</idea>
+      <idea ac="2">Test deduction calculation: 100 miles = $67.00 (100 * 0.67)</idea>
+      <idea ac="3">Test info modal opens when info icon tapped</idea>
+      <idea ac="3">Test info modal content includes IRS rate and explanation text</idea>
+      <idea ac="4">Test YTD resets on Jan 1: mock date to Dec 31 vs Jan 1 and verify different calculations</idea>
+      <idea ac="4">Test yearMiles returns 0 at start of new year with no trips</idea>
+    </ideas>
+  </tests>
+</story-context>

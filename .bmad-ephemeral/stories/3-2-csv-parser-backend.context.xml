@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context version="1.0" story-id="3-2-csv-parser-backend">
+  <metadata>
+    <generated>2026-01-03</generated>
+    <story-file>.bmad-ephemeral/stories/3-2-csv-parser-backend.md</story-file>
+    <epic-context>.bmad-ephemeral/stories/tech-spec-epic-3.md</epic-context>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <story-summary>
+    <title>CSV Parser Backend</title>
+    <description>Implement backend API to parse uploaded CSV files from DoorDash and Uber Eats, persist deliveries to database, and return import summary.</description>
+    <acceptance-criteria count="4">
+      <ac id="1">Parse DoorDash CSV with correct column mapping (Date→deliveredAt, Subtotal→basePay, Tip→tip, Total→earnings, Restaurant→restaurantName)</ac>
+      <ac id="2">Parse Uber Eats CSV with correct column mapping (Trip Date→deliveredAt, Fare→basePay, Tip→tip, Total→earnings, Restaurant→restaurantName)</ac>
+      <ac id="3">Skip invalid rows (missing date, invalid amounts) and return skip count</ac>
+      <ac id="4">Return ImportResponse with imported count, skipped count, date range, and total earnings</ac>
+    </acceptance-criteria>
+  </story-summary>
+
+  <dependencies>
+    <dependency type="prerequisite" story="3-1-csv-import-ui" status="done">
+      <description>CSV Import UI with client-side parser and file picker</description>
+      <integration-point>apps/mobile/app/import.tsx:147-151 - Replace simulated API call with real endpoint</integration-point>
+    </dependency>
+    <dependency type="prerequisite" story="1-5-api-foundation" status="done">
+      <description>API foundation with auth middleware and routing</description>
+    </dependency>
+    <dependency type="prerequisite" story="1-2-database-schema" status="done">
+      <description>Prisma database setup with existing models</description>
+    </dependency>
+  </dependencies>
+
+  <architecture>
+    <backend-stack>
+      <framework>Express 5.x</framework>
+      <orm>Prisma 6.x</orm>
+      <validation>Zod 4.x</validation>
+      <testing>Vitest 4.x</testing>
+      <database>PostgreSQL with PostGIS</database>
+    </backend-stack>
+
+    <file-structure>
+      <existing>
+        <file path="apps/api/src/controllers/earnings.controller.ts" purpose="Extend with importCSV method"/>
+        <file path="apps/api/src/routes/earnings.routes.ts" purpose="Add POST /import route"/>
+        <file path="apps/api/src/schemas/earnings.schema.ts" purpose="Add import validation schema"/>
+        <file path="apps/api/src/services/earnings.service.ts" purpose="Reference for service layer pattern"/>
+        <file path="apps/api/prisma/schema.prisma" purpose="Extend with ImportBatch model, modify Delivery model"/>
+      </existing>
+      <new>
+        <file path="apps/api/src/services/csv-parser.service.ts" purpose="CSV parsing logic for DoorDash/Uber Eats"/>
+        <file path="apps/api/src/services/delivery.service.ts" purpose="Delivery CRUD and bulk import"/>
+      </new>
+    </file-structure>
+  </architecture>
+
+  <existing-code>
+    <prisma-schema>
+      <critical-finding>
+        Current Delivery model REQUIRES platformAccountId (line 116):
+        platformAccountId String
+        platformAccount   PlatformAccount @relation(...)
+
+        CSV imports do NOT have a platform account. Schema modification needed:
+        - Make platformAccountId optional (String?)
+        - Add importBatchId for tracking import source
+        - Add isManual flag for manual entries
+
+        ALSO: Current unique constraint is @@unique([platform, externalId])
+        Should change to @@unique([userId, externalId]) for proper per-user deduplication
+      </critical-finding>
+      <platform-enum>enum Platform { DOORDASH, UBEREATS }</platform-enum>
+    </prisma-schema>
+
+    <controller-pattern file="apps/api/src/controllers/earnings.controller.ts">
+      <pattern>
+        class EarningsController {
+          async methodName(req: Request, res: Response, next: NextFunction): Promise&lt;void&gt; {
+            try {
+              const userId = req.user?.sub;
+              if (!userId) throw errors.unauthorized('User not authenticated');
+              // ... business logic ...
+              res.json(successResponse(data));
+            } catch (error) {
+              next(error);
+            }
+          }
+        }
+        export const earningsController = new EarningsController();
+      </pattern>
+    </controller-pattern>
+
+    <routes-pattern file="apps/api/src/routes/earnings.routes.ts">
+      <pattern>
+        import { Router } from 'express';
+        import { requireAuth } from '../middleware/auth.middleware';
+        import { validateRequest } from '../middleware/validate.middleware';
+
+        const router = Router();
+        router.use(requireAuth);
+        router.post('/import', validateRequest(Schema), controller.method.bind(controller));
+        export default router;
+      </pattern>
+    </routes-pattern>
+
+    <validation-pattern file="apps/api/src/middleware/validate.middleware.ts">
+      <note>Two validators available: validate(schema) for body-only, validateRequest(schema) for query/body/params</note>
+      <note>For file uploads, multer middleware handles file parsing before validation</note>
+    </validation-pattern>
+
+    <service-pattern file="apps/api/src/services/earnings.service.ts">
+      <pattern>
+        class ServiceName {
+          async methodName(params): Promise&lt;ReturnType&gt; {
+            // Use prisma client
+            const result = await prisma.model.findMany({ ... });
+            return result;
+          }
+        }
+        export const serviceName = new ServiceName();
+      </pattern>
+    </service-pattern>
+
+    <response-types file="apps/api/src/types/api.types.ts">
+      <success>{ success: true, data: T, meta?: { timestamp, requestId?, pagination? } }</success>
+      <error>{ success: false, error: { code, message, details? } }</error>
+      <helper>successResponse&lt;T&gt;(data: T, meta?: Partial&lt;ResponseMeta&gt;)</helper>
+    </response-types>
+  </existing-code>
+
+  <client-side-reference>
+    <csv-parser file="apps/mobile/src/services/csvParser.ts">
+      <column-mappings>
+        <doordash>
+          date: ['Date', 'date', 'Delivery Date', 'delivery_date']
+          basePay: ['Subtotal', 'subtotal', 'Base Pay', 'base_pay', 'Dasher Pay']
+          tip: ['Tip', 'tip', 'Customer Tip', 'customer_tip']
+          total: ['Total', 'total', 'Earnings', 'earnings', 'Total Pay']
+          restaurant: ['Restaurant', 'restaurant', 'Merchant', 'merchant', 'Store Name']
+          id: ['Order ID', 'order_id', 'Delivery ID', 'delivery_id', 'ID', 'id']
+        </doordash>
+        <ubereats>
+          date: ['Trip Date', 'trip_date', 'Date', 'date', 'Completed At', 'completed_at']
+          basePay: ['Fare', 'fare', 'Base Fare', 'base_fare', 'Trip Fare']
+          tip: ['Tip', 'tip', 'Customer Tip', 'Tips']
+          total: ['Total', 'total', 'Earnings', 'earnings', 'You Receive']
+          restaurant: ['Restaurant', 'restaurant', 'Pickup Location', 'pickup_location']
+          id: ['Trip ID', 'trip_id', 'UUID', 'uuid', 'ID', 'id']
+        </ubereats>
+      </column-mappings>
+      <date-parsing>
+        Supports: YYYY-MM-DD, MM/DD/YYYY, MM/DD/YY, DD-MM-YYYY
+        See parseDate() function at line 321-370
+      </date-parsing>
+      <currency-parsing>
+        Removes $, commas, whitespace
+        Handles negative values with - or ()
+        See parseCurrency() function at line 375-390
+      </currency-parsing>
+    </csv-parser>
+
+    <import-screen file="apps/mobile/app/import.tsx">
+      <todo-location>Line 147-151: Replace simulated API call with real endpoint</todo-location>
+      <expected-api>
+        POST /api/v1/earnings/import
+        Content-Type: multipart/form-data
+        Body: { file: File, platform: 'DOORDASH' | 'UBEREATS' }
+      </expected-api>
+      <integration-notes>
+        - Create apps/mobile/src/services/earnings.ts with importCSV() method
+        - Use axios for multipart/form-data upload
+        - Update success screen to show actual response data
+      </integration-notes>
+    </import-screen>
+  </client-side-reference>
+
+  <api-contract>
+    <endpoint method="POST" path="/api/v1/earnings/import">
+      <description>Upload and import CSV file with earnings data</description>
+      <content-type>multipart/form-data</content-type>
+      <auth>Bearer token required (requireAuth middleware)</auth>
+      <request>
+        <field name="file" type="File" required="true">CSV file (max 10MB)</field>
+        <field name="platform" type="string" required="true">DOORDASH | UBEREATS</field>
+      </request>
+      <response-success>
+        {
+          "success": true,
+          "data": {
+            "importBatchId": "string (cuid)",
+            "imported": "number",
+            "duplicatesSkipped": "number",
+            "errorsSkipped": "number",
+            "dateRange": {
+              "start": "ISO datetime string",
+              "end": "ISO datetime string"
+            },
+            "totalEarnings": "number"
+          }
+        }
+      </response-success>
+      <response-error>
+        {
+          "success": false,
+          "error": {
+            "code": "VALIDATION_ERROR | PARSE_ERROR | IMPORT_ERROR",
+            "message": "Human-readable error message",
+            "details": { ... }
+          }
+        }
+      </response-error>
+    </endpoint>
+  </api-contract>
+
+  <database-schema-changes>
+    <new-model name="ImportBatch">
+      model ImportBatch {
+        id             String     @id @default(cuid())
+        userId         String
+        user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+        platform       Platform
+        filename       String
+        importedCount  Int
+        duplicateCount Int        @default(0)
+        errorCount     Int        @default(0)
+        createdAt      DateTime   @default(now())
+
+        deliveries     Delivery[]
+
+        @@index([userId, createdAt])
+      }
+    </new-model>
+
+    <modify-model name="Delivery">
+      <change type="make-optional">platformAccountId: String?</change>
+      <change type="make-optional">platformAccount: PlatformAccount? @relation(...)</change>
+      <change type="add-field">importBatchId: String?</change>
+      <change type="add-field">importBatch: ImportBatch? @relation(fields: [importBatchId], references: [id])</change>
+      <change type="add-field">isManual: Boolean @default(false)</change>
+      <change type="modify-unique">@@unique([userId, externalId]) - change from [platform, externalId]</change>
+    </modify-model>
+
+    <modify-model name="User">
+      <change type="add-relation">importBatches: ImportBatch[]</change>
+    </modify-model>
+  </database-schema-changes>
+
+  <implementation-notes>
+    <task id="1" title="Prisma Schema Update">
+      - Add ImportBatch model
+      - Modify Delivery model (make platformAccountId optional, add importBatchId, isManual)
+      - Update User model with importBatches relation
+      - Run: npx prisma migrate dev --name add_csv_import_models
+    </task>
+
+    <task id="2" title="Install Dependencies">
+      - npm install papaparse multer
+      - npm install -D @types/multer @types/papaparse
+      Note: papaparse better than native parsing for edge cases (BOM, encoding)
+    </task>
+
+    <task id="3" title="CSV Parser Service">
+      - Mirror column mappings from mobile csvParser.ts
+      - Generate externalId consistently: SHA256(platform + deliveredAt.toISOString() + earnings.toFixed(2)).substring(0, 32)
+      - Return ParseResult with deliveries[] and skippedRows[]
+    </task>
+
+    <task id="4" title="Delivery Service">
+      - createImportBatch(userId, platform, filename) → ImportBatch
+      - createManyFromImport(userId, importBatchId, deliveries[]) → { imported, duplicates }
+      - Use Prisma createMany with skipDuplicates for efficiency
+    </task>
+
+    <task id="5" title="Import Endpoint">
+      - Configure multer: upload.single('file') with 10MB limit
+      - Validate platform enum in Zod schema
+      - Coordinate csv-parser.service → delivery.service
+      - Return ImportResponse
+    </task>
+
+    <task id="6" title="Mobile Integration">
+      - Create apps/mobile/src/services/earnings.ts
+      - Use FormData for multipart upload
+      - Update import.tsx handleConfirmImport()
+    </task>
+
+    <task id="7" title="Backend Unit Tests">
+      - Create apps/api/src/services/__tests__/csv-parser.service.test.ts
+      - Test both platform formats
+      - Test error handling, skip rows, external ID consistency
+    </task>
+
+    <task id="8" title="Integration Tests">
+      - Create apps/api/src/routes/__tests__/earnings.import.test.ts
+      - Test full upload → parse → save → response flow
+    </task>
+  </implementation-notes>
+
+  <testing-patterns>
+    <backend-testing file="apps/api/src/services/__tests__/*.test.ts">
+      <framework>Vitest</framework>
+      <example>
+        import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+        describe('ServiceName', () => {
+          beforeEach(() => {
+            vi.clearAllMocks();
+          });
+
+          it('should do something', async () => {
+            const result = await service.method(params);
+            expect(result).toEqual(expected);
+          });
+        });
+      </example>
+    </backend-testing>
+
+    <existing-test-reference file="apps/mobile/src/services/__tests__/csvParser.test.ts">
+      31 tests covering DoorDash/Uber Eats parsing, date/currency handling, error cases
+      Backend tests should mirror these patterns
+    </existing-test-reference>
+  </testing-patterns>
+
+  <external-id-generation>
+    <algorithm>
+      import crypto from 'crypto';
+
+      function generateExternalId(platform: Platform, deliveredAt: Date, earnings: number): string {
+        return crypto
+          .createHash('sha256')
+          .update(`${platform}-${deliveredAt.toISOString()}-${earnings.toFixed(2)}`)
+          .digest('hex')
+          .substring(0, 32);
+      }
+    </algorithm>
+    <deduplication>
+      - First check: CSV row has Order ID/Trip ID → use as externalId
+      - Fallback: Generate hash from platform + date + amount
+      - Database enforces uniqueness per user via @@unique([userId, externalId])
+    </deduplication>
+  </external-id-generation>
+
+  <learnings-from-previous-story>
+    <source story="3-1-csv-import-ui">
+      - csvParser.ts column mappings tested and working - REUSE exact same mappings
+      - 31 tests cover edge cases - follow same test patterns
+      - Import screen at app/import.tsx has simulated API at lines 147-151
+      - ParsedDelivery interface must match between mobile and backend
+    </source>
+  </learnings-from-previous-story>
+</story-context>

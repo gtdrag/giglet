@@ -1,11 +1,27 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
-// API base URL - should come from environment in production
-// Use machine IP for simulator/emulator connectivity
-const API_BASE_URL = __DEV__
-  ? 'http://10.0.0.133:3001/api/v1'
-  : 'https://api.giglet.app/api/v1';
+// API base URL from environment or platform-specific default
+// Android emulator uses 10.0.2.2 to reach host, iOS simulator uses localhost
+const getApiBaseUrl = () => {
+  if (!__DEV__) {
+    return 'https://api.giglet.app/api/v1';
+  }
+
+  // Use environment variable if set
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) {
+    return `${envUrl}/api/v1`;
+  }
+
+  // Platform-specific defaults for dev
+  return Platform.OS === 'android'
+    ? 'http://10.0.2.2:3001/api/v1'
+    : 'http://localhost:3001/api/v1';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Token storage keys
 export const TOKEN_KEYS = {

@@ -1,0 +1,236 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>7</epicId>
+    <storyId>2</storyId>
+    <title>Earnings Summary Export</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2026-01-04</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/7-2-earnings-summary-export.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>Pro subscriber with synced earnings</asA>
+    <iWant>to export my earnings summary in CSV or PDF format</iWant>
+    <soThat>I have documentation of my income for tax filing and personal records</soThat>
+    <tasks>
+      <task id="1" ac="2,3,4">Create Earnings Export Types and Interfaces
+        <subtask>Define EarningsExportRow interface with date, platform, basePay, tip, total, restaurantName</subtask>
+        <subtask>Define EarningsExportSummary interface with periodStart, periodEnd, totalEarnings, platformBreakdown, monthlyBreakdown</subtask>
+        <subtask>Add types to apps/mobile/src/services/export/earningsExporter.ts</subtask>
+      </task>
+      <task id="2" ac="1,2,4">Create Earnings CSV Generator
+        <subtask>Create apps/mobile/src/services/export/earningsCsvGenerator.ts</subtask>
+        <subtask>Implement generateEarningsCSV(deliveries: Delivery[], dateRange: DateRange): string</subtask>
+        <subtask>Output columns: Date, Platform, Restaurant, Base Pay, Tip, Total</subtask>
+        <subtask>Add platform subtotals at end (DoorDash: $X, Uber Eats: $Y)</subtask>
+        <subtask>Add grand total row</subtask>
+      </task>
+      <task id="3" ac="1,2,3">Create Earnings PDF Generator
+        <subtask>Create apps/mobile/src/services/export/earningsPdfGenerator.ts</subtask>
+        <subtask>Implement generateEarningsPDF(deliveries: Delivery[], dateRange: DateRange): Promise&lt;string&gt;</subtask>
+        <subtask>Design HTML template with header, platform summary, monthly breakdown, totals</subtask>
+      </task>
+      <task id="4" ac="1,4">Extend Export Service for Earnings
+        <subtask>Add generateEarningsSummary(format, dateRange) to export.ts</subtask>
+        <subtask>Query earningsStore/API for deliveries in date range</subtask>
+        <subtask>Aggregate data by platform and month</subtask>
+        <subtask>Generate file using CSV or PDF generator</subtask>
+      </task>
+      <task id="5" ac="4">Add Earnings Export Preview
+        <subtask>Extend getExportPreview() to support type: 'earnings'</subtask>
+        <subtask>Return delivery count, total earnings, platform breakdown preview</subtask>
+      </task>
+      <task id="6" ac="1">Update Tax Export Screen UI
+        <subtask>Add "Export Earnings Summary" card below mileage export</subtask>
+        <subtask>Reuse DateRangeSelector component</subtask>
+        <subtask>Show earnings export preview</subtask>
+        <subtask>Wire up export flow with share sheet</subtask>
+      </task>
+      <task id="7" ac="2,3,4">Add Unit Tests
+        <subtask>Test CSV generator produces correct columns and platform totals</subtask>
+        <subtask>Test monthly aggregation logic</subtask>
+        <subtask>Test platform breakdown calculations</subtask>
+        <subtask>Test date range filtering</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <ac id="1">Given I am a Pro subscriber with synced earnings, When I tap "Export Earnings Summary" on the Tax Export screen, Then I can select CSV or PDF format</ac>
+    <ac id="2">Given I export earnings, When I view the file, Then I see breakdown by platform (DoorDash/Uber Eats) with totals for each</ac>
+    <ac id="3">Given I export for multiple months, When I view the PDF, Then I see monthly subtotals organized chronologically</ac>
+    <ac id="4">Given I export a date range, When I check totals, Then they match the sum of individual deliveries within that range</ac>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path=".bmad-ephemeral/stories/tech-spec-epic-7.md" title="Epic 7 Tech Spec" section="Story 7.2">
+        Defines EarningsExportRow interface, acceptance criteria, and export workflow for earnings summary. Includes data models for platform breakdown and monthly aggregation.
+      </doc>
+      <doc path="docs/epics.md" title="Epics" section="Story 7.2: Earnings Summary Export">
+        Story definition: Export earnings summary with platform breakdown and monthly totals. CSV one row per delivery or aggregated; PDF summary report with charts.
+      </doc>
+      <doc path=".bmad-ephemeral/stories/7-1-irs-mileage-log-export.md" title="Story 7.1 Completed" section="Dev Agent Record">
+        Previous story establishes export infrastructure patterns. Reuse csvGenerator escaping, pdfGenerator HTML templates, export service orchestration, share service.
+      </doc>
+    </docs>
+
+    <code>
+      <file path="apps/mobile/src/services/export.ts" kind="service" symbol="ExportService" reason="Extend with generateEarningsSummary(), getEarningsPreview(). Follow existing patterns for mileage export.">
+        <interface>
+          generateMileageLog(format: ExportFormat, dateRange: DateRange, userName?: string): Promise&lt;ExportResult&gt;
+          exportAndShareMileageLog(format: ExportFormat, dateRange: DateRange, userName?: string): Promise&lt;ExportResult&gt;
+          getExportPreview(dateRange: DateRange): Promise&lt;ExportPreview&gt;
+        </interface>
+      </file>
+
+      <file path="apps/mobile/src/services/export/csvGenerator.ts" kind="service" symbol="generateMileageCSV" lines="21-55" reason="Follow CSV escaping pattern using escapeCSV() helper. Replicate for earnings with different columns.">
+        <interface>
+          generateMileageCSV(trips: MileageExportRow[], dateRange: DateRange): string
+          escapeCSV(value: string): string (internal - handles commas, quotes, newlines)
+        </interface>
+      </file>
+
+      <file path="apps/mobile/src/services/export/pdfGenerator.ts" kind="service" symbol="generateMileagePDF" reason="Follow HTML template pattern with expo-print. Create parallel earningsPdfGenerator.ts.">
+        <interface>
+          generateMileagePDF(trips: MileageExportRow[], dateRange: DateRange, userName?: string): Promise&lt;string&gt;
+          generatePDFFilename(dateRange: DateRange): string
+        </interface>
+      </file>
+
+      <file path="apps/mobile/src/services/earnings.ts" kind="service" symbol="getDeliveries" lines="111-138" reason="Source for delivery data. Use getDeliveries() to fetch deliveries for date range. Delivery interface has id, platform, earnings, tip, basePay, restaurantName, deliveredAt.">
+        <interface>
+          getDeliveries(period: EarningsPeriod, timezone?: string, limit?: number, offset?: number, platform?: Platform): Promise&lt;DeliveriesResponse&gt;
+          Delivery { id, platform, earnings, tip, basePay, restaurantName, deliveredAt, isManual? }
+          PlatformBreakdown { platform, total, tipTotal, basePayTotal, deliveryCount }
+        </interface>
+      </file>
+
+      <file path="apps/mobile/src/stores/earningsStore.ts" kind="store" symbol="useEarningsStore" reason="Access earnings data via store. Use fetchDeliveries() or direct API calls for export date range.">
+        <interface>
+          useEarningsStore: { summary, deliveries, deliveriesTotal, period, fetchDeliveries, refresh }
+        </interface>
+      </file>
+
+      <file path="apps/mobile/src/stores/subscriptionStore.ts" kind="store" symbol="useSubscriptionStore" lines="110-120" reason="Pro tier gating. Use canAccess('taxExport') to check Pro status before export.">
+        <interface>
+          useSubscriptionStore: { tier, isProUser, canAccess(feature: string): boolean }
+          PRO_FEATURES: ['autoMileageTracking', 'taxExport', 'unlimitedHistory', 'zoneAlerts']
+        </interface>
+      </file>
+
+      <file path="apps/mobile/src/utils/dateRange.ts" kind="utility" symbol="DateRange" reason="Reuse date range types and utilities for export date selection.">
+        <interface>
+          DateRange { startDate: Date, endDate: Date, preset: DateRangePreset }
+          getPresetDateRange(preset: DateRangePreset): DateRange
+          formatDateISO(date: Date): string
+          formatDateShort(date: Date): string
+        </interface>
+      </file>
+
+      <file path="apps/mobile/src/components/DateRangeSelector.tsx" kind="component" reason="Reuse for earnings export date range selection. Already integrated in tax-export.tsx."/>
+
+      <file path="apps/mobile/app/tax-export.tsx" kind="screen" reason="Add earnings export section. Follow mileage export UI pattern with format selector, preview, and export button."/>
+
+      <file path="apps/mobile/src/services/share.ts" kind="service" symbol="shareFile" reason="Reuse for sharing generated earnings export files.">
+        <interface>
+          shareFile(filePath: string, mimeType?: string): Promise&lt;ShareResult&gt;
+          getExportMimeType(format: ExportFormat): string
+        </interface>
+      </file>
+    </code>
+
+    <dependencies>
+      <node ecosystem="npm" manifest="apps/mobile/package.json">
+        <package name="expo-file-system" version="~19.0.21" purpose="File write for generated exports"/>
+        <package name="expo-sharing" version="~14.0.8" purpose="Native share sheet"/>
+        <package name="expo-print" version="~15.0.8" purpose="PDF generation from HTML"/>
+        <package name="zustand" version="^5.0.9" purpose="State management for stores"/>
+        <package name="axios" version="^1.13.2" purpose="API calls for delivery data"/>
+        <package name="vitest" version="^4.0.16" purpose="Unit testing"/>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint source="tech-spec">Client-side generation: PDF and CSV generation happens on-device using expo-print and expo-file-system</constraint>
+    <constraint source="tech-spec">Pro tier gating: All export features require active Pro subscription checked via subscriptionStore.canAccess('taxExport')</constraint>
+    <constraint source="tech-spec">File size limits: Generated files must be reasonable for email attachment (&lt;10MB)</constraint>
+    <constraint source="tech-spec">Offline capable: Exports work offline using cached data from stores</constraint>
+    <constraint source="architecture">Dark theme colors: #09090B (bg), #18181B (card), #27272A (border), #06B6D4 (cyan), #22C55E (green)</constraint>
+    <constraint source="story-7.1">CSV escaping: Handle commas and quotes in restaurant names using escapeCSV pattern from csvGenerator.ts</constraint>
+    <constraint source="story-7.1">Export filenames: Use pattern earnings-summary-YYYYMMDD-YYYYMMDD.csv/pdf</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="Delivery" kind="type" path="apps/mobile/src/services/earnings.ts">
+      interface Delivery {
+        id: string;
+        platform: 'DOORDASH' | 'UBEREATS';
+        earnings: number;
+        tip: number;
+        basePay: number;
+        restaurantName: string | null;
+        deliveredAt: string;
+        isManual?: boolean;
+      }
+    </interface>
+    <interface name="EarningsExportRow" kind="type" path="apps/mobile/src/services/export/earningsCsvGenerator.ts (NEW)">
+      interface EarningsExportRow {
+        date: string;          // "2025-01-15"
+        platform: string;      // "DOORDASH" | "UBEREATS"
+        restaurantName: string;
+        basePay: number;
+        tip: number;
+        total: number;
+      }
+    </interface>
+    <interface name="MonthlyBreakdown" kind="type" path="apps/mobile/src/services/export/earningsCsvGenerator.ts (NEW)">
+      interface MonthlyBreakdown {
+        month: string;     // "2025-01"
+        doordash: number;
+        ubereats: number;
+        total: number;
+      }
+    </interface>
+    <interface name="EarningsExportPreview" kind="type" path="apps/mobile/src/services/export.ts (EXTEND)">
+      interface EarningsExportPreview {
+        deliveryCount: number;
+        totalEarnings: number;
+        platformBreakdown: { doordash: number; ubereats: number };
+        dateRange: DateRange;
+      }
+    </interface>
+    <interface name="GET /earnings/deliveries" kind="REST" path="apps/api/src/routes/earnings.routes.ts">
+      GET /earnings/deliveries?period=year&amp;timezone=America/Los_Angeles&amp;limit=1000&amp;offset=0
+      Response: { deliveries: Delivery[], total: number, limit: number, offset: number }
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest for unit testing. Follow existing patterns in apps/mobile/src/services/export/__tests__/csvGenerator.test.ts.
+      Use explicit local dates (new Date(2025, 0, 15)) to avoid timezone issues.
+      Mock external dependencies (API calls, file system) for isolated tests.
+      Test coverage target: 80% for new code.
+    </standards>
+    <locations>
+      apps/mobile/src/services/export/__tests__/earningsCsvGenerator.test.ts (NEW)
+      apps/mobile/src/utils/__tests__/dateRange.test.ts (EXISTING - 20 tests)
+    </locations>
+    <ideas>
+      <test ac="2">CSV generator produces correct columns: Date, Platform, Restaurant, Base Pay, Tip, Total</test>
+      <test ac="2">CSV includes platform subtotals: DOORDASH SUBTOTAL and UBEREATS SUBTOTAL rows</test>
+      <test ac="2">CSV includes grand total row summing all deliveries</test>
+      <test ac="3">Monthly aggregation groups deliveries by YYYY-MM and sums by platform</test>
+      <test ac="3">PDF monthly table shows chronological order (oldest month first)</test>
+      <test ac="4">Platform breakdown sums match individual delivery totals</test>
+      <test ac="4">Date range filtering excludes deliveries outside range boundaries</test>
+      <test ac="1">Export preview returns accurate delivery count and totals</test>
+      <test edge="true">Empty deliveries array produces valid CSV with headers and zero totals</test>
+      <test edge="true">Single platform (only DoorDash) shows one subtotal, other as $0</test>
+      <test edge="true">Restaurant names with commas are properly escaped in CSV</test>
+    </ideas>
+  </tests>
+</story-context>
