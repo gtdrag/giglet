@@ -1,0 +1,173 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>8</epicId>
+    <storyId>5</storyId>
+    <title>Subscription Cancellation Handling</title>
+    <status>drafted</status>
+    <generatedAt>2026-01-04</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/8-5-subscription-cancellation-handling.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user who cancels</asA>
+    <iWant>to retain access until my period ends</iWant>
+    <soThat>I get what I paid for</soThat>
+    <tasks>
+      <task id="1" acs="1,2,3">Update SubscriptionStore to Handle Canceled State
+        <subtask>Add isCanceled boolean field to subscriptionStore</subtask>
+        <subtask>Add willRenew boolean field to track auto-renewal status</subtask>
+        <subtask>Update loadSubscription() to parse canceled status from RevenueCat customerInfo</subtask>
+        <subtask>Ensure tier remains PRO_MONTHLY/PRO_ANNUAL until expiration even when canceled</subtask>
+      </task>
+      <task id="2" acs="1,2,4">Update Subscription Screen UI for Canceled State
+        <subtask>Add canceled state visual indicator (banner/badge) when subscription is canceled but not expired</subtask>
+        <subtask>Display "Your subscription ends on [date]" message for canceled subscriptions</subtask>
+        <subtask>Replace "Manage Subscription" with "Re-subscribe" button when canceled</subtask>
+        <subtask>Show PaywallModal when "Re-subscribe" is tapped</subtask>
+      </task>
+      <task id="3" acs="3">Handle Subscription Expiration on App Launch
+        <subtask>Verify loadSubscription() correctly downgrades tier to FREE when subscription expires</subtask>
+        <subtask>Ensure Pro features are locked after expiration (uses existing isProUser check)</subtask>
+        <subtask>Verify user data is NOT deleted on downgrade (no data cleanup code)</subtask>
+        <subtask>Show appropriate messaging in subscription screen after expiration</subtask>
+      </task>
+      <task id="4" acs="1,2,3">Write Unit Tests
+        <subtask>Test subscriptionStore handles canceled state correctly</subtask>
+        <subtask>Test subscription screen displays canceled state UI</subtask>
+        <subtask>Test tier correctly downgrades to FREE after expiration</subtask>
+        <subtask>Test Re-subscribe flow opens PaywallModal</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <ac id="1">Given I cancel my subscription, When the cancellation processes, Then I retain Pro access until the end of billing period, And I see "Your subscription ends on [date]" message on the subscription screen</ac>
+    <ac id="2">Given my subscription has been canceled but not expired, When I view the subscription screen, Then I see a visual indicator that my subscription is canceled, And I see the expiration date prominently displayed, And I see a "Re-subscribe" button</ac>
+    <ac id="3">Given my subscription lapses (expires after cancellation), When I open the app after expiry, Then Pro features are locked, And my data is retained (not deleted), And I can re-subscribe to regain access</ac>
+    <ac id="4">Given I am a user with a canceled subscription, When I tap "Re-subscribe", Then I am shown the PaywallModal to purchase a new subscription</ac>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-8.md</path>
+        <title>Epic 8 Technical Specification</title>
+        <section>Story 8.5: Subscription Cancellation Handling</section>
+        <snippet>Webhook handles cancellation events. Update subscription status to CANCELED. Show expiration date in UI.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic Definitions</title>
+        <section>Story 8.5: Subscription Cancellation Handling</section>
+        <snippet>As a user who cancels, I want to retain access until my period ends. RevenueCat handles expiration dates. Webhook for subscription status changes. Don't delete user data on downgrade.</snippet>
+      </doc>
+      <doc>
+        <path>docs/PRD-Giglet-MVP.md</path>
+        <title>Product Requirements Document</title>
+        <section>US-7.5</section>
+        <snippet>As a Pro user, I retain access until end of billing period after canceling. Grace period handled correctly. Downgrade to free at period end.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <file>
+        <path>apps/mobile/src/stores/subscriptionStore.ts</path>
+        <kind>store</kind>
+        <symbol>useSubscriptionStore</symbol>
+        <lines>1-103</lines>
+        <reason>Core subscription state management. Needs isCanceled and willRenew fields added. Contains loadSubscription() that parses subscription from API.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/services/subscriptions.ts</path>
+        <kind>service</kind>
+        <symbol>getSubscriptionDetails</symbol>
+        <lines>333-370</lines>
+        <reason>Already returns willRenew from RevenueCat customerInfo. Used to determine cancellation state.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/app/subscription.tsx</path>
+        <kind>screen</kind>
+        <symbol>SubscriptionScreen</symbol>
+        <lines>1-469</lines>
+        <reason>Main subscription management UI. Needs canceled state UI, "Re-subscribe" button, and cancellation messaging.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/components/subscriptions/PaywallModal.tsx</path>
+        <kind>component</kind>
+        <symbol>PaywallModal</symbol>
+        <reason>Used for re-subscription flow. Already exists and can be reused.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/stores/__tests__/subscriptionStore.test.ts</path>
+        <kind>test</kind>
+        <symbol>subscriptionStore tests</symbol>
+        <reason>Existing test file to extend with canceled state tests.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/src/services/__tests__/subscriptions.test.ts</path>
+        <kind>test</kind>
+        <symbol>subscriptions service tests</symbol>
+        <reason>Existing tests for subscriptions service. Has willRenew test coverage.</reason>
+      </file>
+    </code>
+    <dependencies>
+      <ecosystem name="react-native">
+        <package name="react-native-purchases" version="^9.6.13">RevenueCat SDK for subscription management</package>
+        <package name="zustand" version="^5.0.9">State management for subscriptionStore</package>
+        <package name="expo-linking" version="^8.0.11">Deep linking to store subscription management</package>
+      </ecosystem>
+      <ecosystem name="testing">
+        <package name="vitest" version="^4.0.16">Test framework</package>
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint source="tech-spec">RevenueCat SDK handles expiration dates - do not implement custom expiration logic</constraint>
+    <constraint source="epics">Don't delete user data on downgrade - data retention is critical</constraint>
+    <constraint source="architecture">Use existing isProUser check for feature gating - don't add new gating logic</constraint>
+    <constraint source="dev-notes">getSubscriptionDetails() already returns willRenew - reuse this, don't recreate</constraint>
+    <constraint source="testing">Maintain test baseline: 191 mobile + 118 API tests passing</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>SubscriptionState</name>
+      <kind>TypeScript interface</kind>
+      <signature>interface SubscriptionState { tier: SubscriptionTier; isProUser: boolean; expiresAt: Date | null; isLoading: boolean; error: string | null; loadSubscription: () => Promise&lt;void&gt;; canAccess: (feature: string) => boolean; setTier: (tier: SubscriptionTier) => void; clearError: () => void; }</signature>
+      <path>apps/mobile/src/stores/subscriptionStore.ts</path>
+      <note>Needs isCanceled and willRenew fields added</note>
+    </interface>
+    <interface>
+      <name>getSubscriptionDetails</name>
+      <kind>function</kind>
+      <signature>function getSubscriptionDetails(customerInfo: unknown): { isProUser: boolean; tier: 'FREE' | 'PRO_MONTHLY' | 'PRO_ANNUAL'; expiresAt: Date | null; willRenew: boolean; }</signature>
+      <path>apps/mobile/src/services/subscriptions.ts:333</path>
+      <note>Already returns willRenew - can be used to detect canceled state</note>
+    </interface>
+    <interface>
+      <name>PaywallModal</name>
+      <kind>React component</kind>
+      <signature>PaywallModal({ visible, onClose }: { visible: boolean; onClose: () => void })</signature>
+      <path>apps/mobile/src/components/subscriptions/PaywallModal.tsx</path>
+      <note>Reuse for re-subscription flow</note>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>Vitest with React Native mocking. Use vi.mock() for native modules. Use setMockOS() from src/__mocks__/react-native.ts for platform-specific tests. Direct Zustand store access for store tests.</standards>
+    <locations>
+      <location>apps/mobile/src/stores/__tests__/</location>
+      <location>apps/mobile/src/services/__tests__/</location>
+    </locations>
+    <ideas>
+      <idea ac="1">Test subscriptionStore correctly sets isCanceled=true when willRenew=false and tier is PRO</idea>
+      <idea ac="1">Test tier remains PRO_MONTHLY/PRO_ANNUAL when canceled but not expired</idea>
+      <idea ac="2">Test subscription screen shows canceled banner when isCanceled=true and isProUser=true</idea>
+      <idea ac="2">Test "Re-subscribe" button appears instead of "Manage Subscription" when canceled</idea>
+      <idea ac="3">Test tier correctly becomes FREE when entitlement is absent (expired)</idea>
+      <idea ac="3">Test isProUser=false after expiration</idea>
+      <idea ac="4">Test PaywallModal opens when "Re-subscribe" is tapped</idea>
+    </ideas>
+  </tests>
+</story-context>

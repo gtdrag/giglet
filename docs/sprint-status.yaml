@@ -94,7 +94,7 @@ development_status:
   4-4-individual-delivery-list: done
   4-5-period-comparison: done
   4-6-hourly-rate-calculation: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: completed
 
   # ============================================
   # Epic 5: Giglet Focus Zones (8 stories)
@@ -137,12 +137,13 @@ development_status:
   # ============================================
   # Epic 8: Subscription & Payments (6 stories)
   # ============================================
-  epic-8: backlog
-  8-1-free-tier-feature-limitations: backlog
-  8-2-pro-monthly-subscription-purchase: backlog
-  8-3-pro-annual-subscription-purchase: backlog
-  8-4-subscription-status-display: backlog
-  8-5-subscription-cancellation-handling: backlog
+  # Tech Spec: .bmad-ephemeral/stories/tech-spec-epic-8.md (2026-01-04)
+  epic-8: contexted
+  8-1-free-tier-feature-limitations: done
+  8-2-pro-monthly-subscription-purchase: done
+  8-3-pro-annual-subscription-purchase: done
+  8-4-subscription-status-display: done
+  8-5-subscription-cancellation-handling: done
   8-6-purchase-restoration: backlog
   epic-8-retrospective: optional
 
