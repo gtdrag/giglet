@@ -182,6 +182,18 @@ export default function SubscriptionScreen() {
                 <Text style={styles.manageHint}>
                   Opens the {getManagementUrl().includes('apple') ? 'App Store' : 'Play Store'} to manage your subscription
                 </Text>
+
+                <Pressable
+                  style={styles.restoreButton}
+                  onPress={handleRestorePurchases}
+                  disabled={isRestoring}
+                >
+                  {isRestoring ? (
+                    <ActivityIndicator size="small" color="#10b981" />
+                  ) : (
+                    <Text style={styles.restoreButtonText}>Restore Purchases</Text>
+                  )}
+                </Pressable>
               </View>
             )}
 
