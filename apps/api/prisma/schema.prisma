@@ -34,6 +34,7 @@ model User {
   subscription     Subscription?
   preferences      UserPreferences?
   importBatches    ImportBatch[]
+  tipLogs          TipLog[]
 }
 
 enum AuthProvider {
@@ -235,4 +236,28 @@ model Zone {
 
   @@index([h3Index])
   @@index([currentScore])
+}
+
+// ============ TIP TRACKING ============
+
+enum TipSize {
+  NONE
+  SMALL
+  MEDIUM
+  LARGE
+  XLARGE
+  XXLARGE
+}
+
+model TipLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lat       Float
+  lng       Float
+  tipSize   TipSize
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([lat, lng])
 }

@@ -162,8 +162,8 @@ development_status:
   # Epic 10: Tip Tracker (4 stories)
   # ============================================
   epic-10: contexted
-  10-1-tip-logging-button-and-ui: backlog
-  10-2-tip-location-storage-backend: backlog
-  10-3-tip-locations-map-layer: backlog
-  10-4-tip-filter-controls: backlog
+  10-1-tip-logging-button-and-ui: done
+  10-2-tip-location-storage-backend: done
+  10-3-tip-locations-map-layer: done
+  10-4-tip-filter-controls: done
   epic-10-retrospective: optional
