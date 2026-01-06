@@ -1,0 +1,62 @@
+import { ExpoConfig, ConfigContext } from 'expo/config';
+
+export default ({ config }: ConfigContext): ExpoConfig => ({
+  ...config,
+  name: 'Giglet',
+  slug: 'giglet',
+  version: '1.0.0',
+  orientation: 'portrait',
+  icon: './assets/icon.png',
+  userInterfaceStyle: 'automatic',
+  newArchEnabled: true,
+  scheme: 'giglet',
+  splash: {
+    image: './assets/splash-icon.png',
+    resizeMode: 'contain',
+    backgroundColor: '#09090B',
+  },
+  ios: {
+    supportsTablet: false,
+    bundleIdentifier: 'app.giglet.driver',
+    infoPlist: {
+      NSLocationWhenInUseUsageDescription:
+        'Giglet needs your location to show Focus Zones near you.',
+      NSLocationAlwaysAndWhenInUseUsageDescription:
+        'Giglet needs background location access to automatically track your mileage for tax deductions.',
+      UIBackgroundModes: ['location', 'fetch'],
+    },
+  },
+  android: {
+    package: 'app.giglet.driver',
+    adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon.png',
+      backgroundColor: '#09090B',
+    },
+    edgeToEdgeEnabled: true,
+    permissions: [
+      'ACCESS_COARSE_LOCATION',
+      'ACCESS_FINE_LOCATION',
+      'ACCESS_BACKGROUND_LOCATION',
+    ],
+    config: {
+      googleMaps: {
+        apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+      },
+    },
+  },
+  web: {
+    favicon: './assets/favicon.png',
+    bundler: 'metro',
+  },
+  plugins: [
+    'expo-router',
+    'expo-secure-store',
+    'expo-apple-authentication',
+    '@react-native-google-signin/google-signin',
+    'expo-localization',
+    '@react-native-community/datetimepicker',
+  ],
+  experiments: {
+    typedRoutes: true,
+  },
+});
