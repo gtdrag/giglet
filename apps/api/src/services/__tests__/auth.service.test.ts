@@ -13,11 +13,17 @@ const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
 }));
 
+// Hoisted bcrypt mocks
+const bcryptMocks = vi.hoisted(() => ({
+  hash: vi.fn(),
+  compare: vi.fn(),
+}));
+
 // Mock bcryptjs
 vi.mock('bcryptjs', () => ({
   default: {
-    hash: vi.fn().mockResolvedValue('hashed_password'),
-    compare: vi.fn().mockResolvedValue(true),
+    hash: bcryptMocks.hash,
+    compare: bcryptMocks.compare,
   },
 }));
 
@@ -70,6 +76,9 @@ import { AppError } from '../../middleware/error.middleware';
 describe('AuthService - Account Deletion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Set default bcrypt mock behavior
+    bcryptMocks.hash.mockResolvedValue('hashed_password');
+    bcryptMocks.compare.mockResolvedValue(true);
   });
 
   describe('deleteAccount', () => {
@@ -186,8 +195,7 @@ describe('AuthService - Account Deletion', () => {
     });
 
     it('should throw error for invalid password', async () => {
-      const bcrypt = await import('bcryptjs');
-      vi.mocked(bcrypt.default.compare).mockResolvedValueOnce(false);
+      bcryptMocks.compare.mockResolvedValueOnce(false);
 
       const mockUser = {
         id: 'user-123',

@@ -53,7 +53,7 @@ describe('Legal Document Opening', () => {
 
   describe('openPrivacyPolicy', () => {
     it('opens the correct URL', async () => {
-      vi.mocked(Linking.openURL).mockResolvedValueOnce();
+      vi.mocked(Linking.openURL).mockResolvedValueOnce(true);
 
       await openPrivacyPolicy();
 
@@ -74,7 +74,7 @@ describe('Legal Document Opening', () => {
     });
 
     it('does not show alert on success', async () => {
-      vi.mocked(Linking.openURL).mockResolvedValueOnce();
+      vi.mocked(Linking.openURL).mockResolvedValueOnce(true);
 
       await openPrivacyPolicy();
 
@@ -84,7 +84,7 @@ describe('Legal Document Opening', () => {
 
   describe('openTermsOfService', () => {
     it('opens the correct URL', async () => {
-      vi.mocked(Linking.openURL).mockResolvedValueOnce();
+      vi.mocked(Linking.openURL).mockResolvedValueOnce(true);
 
       await openTermsOfService();
 
@@ -105,7 +105,7 @@ describe('Legal Document Opening', () => {
     });
 
     it('does not show alert on success', async () => {
-      vi.mocked(Linking.openURL).mockResolvedValueOnce();
+      vi.mocked(Linking.openURL).mockResolvedValueOnce(true);
 
       await openTermsOfService();
 

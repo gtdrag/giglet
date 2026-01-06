@@ -4,7 +4,7 @@
  */
 
 import * as Location from 'expo-location';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { CompletedTrip } from './locationTracking';
 import type { DateRange } from '../utils/dateRange';
 import { formatDateISO } from '../utils/dateRange';

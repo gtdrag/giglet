@@ -7,24 +7,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useSubscriptionStore, PRO_FEATURES } from '../subscriptionStore';
 
+// Use vi.hoisted for proper mock setup
+const mockApiGet = vi.hoisted(() => vi.fn());
+const mockGetCustomerInfo = vi.hoisted(() => vi.fn());
+const mockGetSubscriptionDetails = vi.hoisted(() => vi.fn());
+
 // Mock the API module
 vi.mock('../../services/api', () => ({
   default: {
-    get: vi.fn(),
+    get: mockApiGet,
   },
 }));
 
 // Mock the subscriptions service
 vi.mock('../../services/subscriptions', () => ({
-  getCustomerInfo: vi.fn(),
-  getSubscriptionDetails: vi.fn(),
+  getCustomerInfo: mockGetCustomerInfo,
+  getSubscriptionDetails: mockGetSubscriptionDetails,
 }));
-
-import api from '../../services/api';
-import { getCustomerInfo, getSubscriptionDetails } from '../../services/subscriptions';
-const mockApi = vi.mocked(api);
-const mockGetCustomerInfo = vi.mocked(getCustomerInfo);
-const mockGetSubscriptionDetails = vi.mocked(getSubscriptionDetails);
 
 describe('Subscription Store', () => {
   beforeEach(() => {
@@ -64,7 +63,7 @@ describe('Subscription Store', () => {
   describe('loadSubscription', () => {
     it('should load PRO_ANNUAL tier from API', async () => {
       const expirationDate = '2027-01-04T00:00:00.000Z';
-      mockApi.get.mockResolvedValue({
+      mockApiGet.mockResolvedValue({
         data: {
           data: {
             id: 'user-123',
@@ -98,7 +97,7 @@ describe('Subscription Store', () => {
 
     it('should load PRO_MONTHLY tier from API', async () => {
       const expirationDate = '2026-02-04T00:00:00.000Z';
-      mockApi.get.mockResolvedValue({
+      mockApiGet.mockResolvedValue({
         data: {
           data: {
             id: 'user-123',
@@ -126,7 +125,7 @@ describe('Subscription Store', () => {
     });
 
     it('should set FREE tier when no subscription record', async () => {
-      mockApi.get.mockResolvedValue({
+      mockApiGet.mockResolvedValue({
         data: {
           data: {
             id: 'user-123',
@@ -146,7 +145,7 @@ describe('Subscription Store', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      mockApi.get.mockRejectedValue(new Error('Network error'));
+      mockApiGet.mockRejectedValue(new Error('Network error'));
 
       await useSubscriptionStore.getState().loadSubscription();
 
@@ -162,7 +161,7 @@ describe('Subscription Store', () => {
       const promise = new Promise((resolve) => {
         resolvePromise = resolve;
       });
-      mockApi.get.mockReturnValue(promise as Promise<unknown>);
+      mockApiGet.mockReturnValue(promise as Promise<unknown>);
 
       // Start loading
       const loadPromise = useSubscriptionStore.getState().loadSubscription();
@@ -273,7 +272,7 @@ describe('Subscription Store', () => {
   describe('Canceled State (Story 8-5)', () => {
     it('should set isCanceled=true when Pro user has willRenew=false', async () => {
       const expirationDate = '2026-02-04T00:00:00.000Z';
-      mockApi.get.mockResolvedValue({
+      mockApiGet.mockResolvedValue({
         data: {
           data: {
             id: 'user-123',
@@ -306,7 +305,7 @@ describe('Subscription Store', () => {
 
     it('should keep tier as PRO even when canceled but not expired', async () => {
       const futureDate = '2026-02-04T00:00:00.000Z';
-      mockApi.get.mockResolvedValue({
+      mockApiGet.mockResolvedValue({
         data: {
           data: {
             subscription: {
@@ -335,7 +334,7 @@ describe('Subscription Store', () => {
     });
 
     it('should set isCanceled=false when Pro user has willRenew=true', async () => {
-      mockApi.get.mockResolvedValue({
+      mockApiGet.mockResolvedValue({
         data: {
           data: {
             subscription: {
@@ -362,7 +361,7 @@ describe('Subscription Store', () => {
     });
 
     it('should correctly downgrade to FREE when subscription expires', async () => {
-      mockApi.get.mockResolvedValue({
+      mockApiGet.mockResolvedValue({
         data: {
           data: {
             subscription: null, // No active subscription (expired)
@@ -387,7 +386,7 @@ describe('Subscription Store', () => {
     });
 
     it('should default to willRenew=true when RevenueCat is not available', async () => {
-      mockApi.get.mockResolvedValue({
+      mockApiGet.mockResolvedValue({
         data: {
           data: {
             subscription: {
