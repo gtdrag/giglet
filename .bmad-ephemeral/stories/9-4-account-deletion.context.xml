@@ -1,0 +1,259 @@
+<story-context id="story-9-4-account-deletion" v="1.0">
+  <metadata>
+    <epicId>9</epicId>
+    <storyId>4</storyId>
+    <title>Account Deletion</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2026-01-05</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/9-4-account-deletion.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>registered user</asA>
+    <iWant>to delete my account and all data</iWant>
+    <soThat>I can exercise my privacy rights (GDPR/CCPA compliance)</soThat>
+    <tasks>
+      <task id="1" ac="1">
+        <title>Create Account Deletion UI</title>
+        <subtasks>
+          <subtask>Add "Delete Account" button to profile.tsx or accounts.tsx in danger zone style</subtask>
+          <subtask>Create confirmation modal with warning text explaining: all data deleted, 30-day grace period, can recover by logging back in</subtask>
+          <subtask>Implement text input requiring user to type "DELETE" to confirm</subtask>
+          <subtask>Add visual styling for destructive action (red theme, warning icons)</subtask>
+          <subtask>Disable confirm button until "DELETE" is typed correctly</subtask>
+        </subtasks>
+      </task>
+      <task id="2" ac="2">
+        <title>Implement Backend Deletion Endpoint</title>
+        <subtasks>
+          <subtask>Create/update DELETE /api/v1/auth/account endpoint</subtask>
+          <subtask>Add deletionScheduledAt field to User model (nullable DateTime)</subtask>
+          <subtask>Implement soft delete: Set deletionScheduledAt = now + 30 days</subtask>
+          <subtask>Validate JWT and ensure user can only delete their own account</subtask>
+          <subtask>Return success response with scheduled deletion date</subtask>
+        </subtasks>
+      </task>
+      <task id="3" ac="1,2">
+        <title>Implement Mobile Deletion Flow</title>
+        <subtasks>
+          <subtask>Create deleteAccount() function in authStore or new service</subtask>
+          <subtask>Call DELETE /api/v1/auth/account on confirmation</subtask>
+          <subtask>On success: Clear secure storage (tokens)</subtask>
+          <subtask>On success: Clear all Zustand stores (auth, settings, earnings, etc.)</subtask>
+          <subtask>On success: Stop background location tracking</subtask>
+          <subtask>Navigate to login screen with "Account deletion scheduled" message</subtask>
+          <subtask>Handle errors gracefully with user-friendly messages</subtask>
+        </subtasks>
+      </task>
+      <task id="4" ac="3">
+        <title>Implement Account Recovery on Login</title>
+        <subtasks>
+          <subtask>Update login endpoint to check deletionScheduledAt on successful auth</subtask>
+          <subtask>If deletionScheduledAt is set and not yet passed: Clear deletionScheduledAt, return accountRecovered flag</subtask>
+          <subtask>Mobile: Show "Account recovered" message if flag received</subtask>
+          <subtask>If deletionScheduledAt has passed: Return "Account deleted" error</subtask>
+        </subtasks>
+      </task>
+      <task id="5" ac="2">
+        <title>Add Prisma Migration</title>
+        <subtasks>
+          <subtask>Create migration to add deletionScheduledAt DateTime? to User model</subtask>
+          <subtask>Run migration on local and staging databases</subtask>
+          <subtask>Update Prisma schema types</subtask>
+        </subtasks>
+      </task>
+      <task id="6" ac="1,2,3">
+        <title>Add Unit Tests</title>
+        <subtasks>
+          <subtask>Test confirmation modal shows with correct warning text</subtask>
+          <subtask>Test "DELETE" text validation</subtask>
+          <subtask>Test API call on confirmation</subtask>
+          <subtask>Test stores are cleared after successful deletion</subtask>
+          <subtask>Test navigation to login after deletion</subtask>
+          <subtask>Test account recovery cancels deletion</subtask>
+        </subtasks>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">
+      <given>I want to delete my account</given>
+      <when>I tap "Delete Account"</when>
+      <then>I see warning about permanent deletion, And I must confirm (type "DELETE" or similar), And on confirmation, deletion process starts</then>
+    </criterion>
+    <criterion id="2">
+      <given>I confirm deletion</given>
+      <when>deletion processes</when>
+      <then>my account is scheduled for deletion, And I am logged out, And within 30 days, all my data is permanently removed</then>
+    </criterion>
+    <criterion id="3">
+      <given>I deleted my account</given>
+      <when>I log back in within 30 days</when>
+      <then>my account is recovered and deletion is cancelled</then>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-9.md</path>
+        <title>Epic 9 Technical Specification</title>
+        <section>Story 9.4 Acceptance Criteria, Account Deletion Flow</section>
+        <snippet>Account deletion with 30-day soft-delete grace period. Requires typing "DELETE" to confirm. Sets deletionScheduledAt = now + 30 days, clears session, navigates to login.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Architecture Document</title>
+        <section>Auth Endpoints</section>
+        <snippet>DELETE /api/v1/auth/account for account deletion referenced at line 491. All auth endpoints require valid JWT.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 9.4: Account Deletion</section>
+        <snippet>GDPR/CCPA compliance requirement. Soft delete first, hard delete after 30 days. Delete: user record, linked accounts, deliveries, trips. Log deletion request for audit.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <artifact>
+        <path>apps/mobile/src/stores/authStore.ts</path>
+        <kind>store</kind>
+        <symbol>useAuthStore</symbol>
+        <lines>1-147</lines>
+        <reason>Auth state management. Contains logout() function to extend. Add deleteAccount() action that calls API, clears stores, and navigates to login.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/src/services/auth.ts</path>
+        <kind>service</kind>
+        <symbol>logout, clearTokens</symbol>
+        <lines>157-159</lines>
+        <reason>Auth service with clearTokens() function. Add deleteAccount() function to call DELETE /auth/account endpoint.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/src/services/api.ts</path>
+        <kind>service</kind>
+        <symbol>clearTokens, storeTokens</symbol>
+        <lines>121-124</lines>
+        <reason>Token management functions. Use clearTokens() when account deletion succeeds.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/app/accounts.tsx</path>
+        <kind>screen</kind>
+        <symbol>AccountsScreen</symbol>
+        <reason>Settings hub screen. Add "Delete Account" button in danger zone section below Sign Out.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/api/src/controllers/auth.controller.ts</path>
+        <kind>controller</kind>
+        <symbol>AuthController</symbol>
+        <lines>1-261</lines>
+        <reason>Auth controller with existing endpoints. Add deleteAccount() method to handle DELETE /auth/account.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/api/src/routes/auth.routes.ts</path>
+        <kind>routes</kind>
+        <symbol>router</symbol>
+        <lines>1-82</lines>
+        <reason>Auth routes. Add DELETE /account route with requireAuth middleware.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/api/src/services/auth.service.ts</path>
+        <kind>service</kind>
+        <symbol>authService</symbol>
+        <reason>Auth business logic. Add deleteAccount() and check account recovery on login().</reason>
+      </artifact>
+      <artifact>
+        <path>apps/api/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>User model</symbol>
+        <lines>17-36</lines>
+        <reason>User model definition. Add deletionScheduledAt DateTime? field.</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <mobile>
+        <package name="expo-secure-store" version="~15.0.8">Token storage - use for clearing tokens on deletion</package>
+        <package name="zustand" version="^5.0.9">State management - clear all stores on deletion</package>
+        <package name="expo-router" version="^6.0.21">Navigation - use router.replace('/login') after deletion</package>
+        <package name="expo-location" version="~19.0.8">Location tracking - stop background tracking on deletion</package>
+        <package name="react-native-purchases" version="^9.6.13">RevenueCat - call logoutUser() on deletion</package>
+        <package name="axios" version="^1.13.2">HTTP client for API calls</package>
+      </mobile>
+      <api>
+        <package name="@prisma/client" version="^6.19.1">Database ORM - update User model</package>
+        <package name="jsonwebtoken" version="^9.0.3">JWT handling for auth</package>
+        <package name="zod" version="^4.3.4">Request validation</package>
+        <package name="express" version="^5.2.1">Web framework</package>
+      </api>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint source="tech-spec-epic-9.md">All endpoints require valid JWT - use requireAuth middleware</constraint>
+    <constraint source="tech-spec-epic-9.md">Users can only access/modify their own data - validate userId from JWT</constraint>
+    <constraint source="tech-spec-epic-9.md">30-day retention period before hard delete - GDPR/CCPA compliance</constraint>
+    <constraint source="architecture.md">Follow route → controller → service pattern</constraint>
+    <constraint source="story-9-3-learnings">Dark theme styling: #09090B background, #18181B cards, #27272A borders</constraint>
+    <constraint source="story-9-3-learnings">Use #EF4444 (red-500) for destructive actions</constraint>
+    <constraint source="story-9-3-learnings">Use Alert.alert() for user-facing error messages</constraint>
+    <constraint source="story-9-3-learnings">Use router.push/replace for navigation, router.back() for back nav</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>DELETE /api/v1/auth/account</name>
+      <kind>REST endpoint</kind>
+      <signature>DELETE /api/v1/auth/account → { success: true, data: { deletionScheduledAt: string } }</signature>
+      <path>apps/api/src/routes/auth.routes.ts</path>
+      <notes>New endpoint. Requires requireAuth middleware. Sets deletionScheduledAt = now + 30 days.</notes>
+    </interface>
+    <interface>
+      <name>clearTokens</name>
+      <kind>function</kind>
+      <signature>clearTokens(): Promise&lt;void&gt;</signature>
+      <path>apps/mobile/src/services/api.ts:121-124</path>
+      <notes>Existing function - clears access and refresh tokens from SecureStore</notes>
+    </interface>
+    <interface>
+      <name>logout</name>
+      <kind>store action</kind>
+      <signature>logout(): Promise&lt;void&gt;</signature>
+      <path>apps/mobile/src/stores/authStore.ts:42-46</path>
+      <notes>Existing action - calls logoutService() and logoutUser(). Reference for deleteAccount() pattern.</notes>
+    </interface>
+    <interface>
+      <name>logoutUser (RevenueCat)</name>
+      <kind>function</kind>
+      <signature>logoutUser(): Promise&lt;void&gt;</signature>
+      <path>apps/mobile/src/services/subscriptions.ts</path>
+      <notes>Existing function - logs user out from RevenueCat. Call on account deletion.</notes>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Vitest for unit tests. Use vi.mock() for mocking services and modules. No React Testing Library - test logic functions directly. Follow patterns from legal.test.ts and other existing tests. 80% coverage target for new code.
+    </standards>
+    <locations>
+      <location>apps/mobile/src/**/__tests__/**/*.test.ts</location>
+      <location>apps/api/src/**/__tests__/**/*.test.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="1">Test confirmation modal renders with warning text and DELETE input</idea>
+      <idea ac="1">Test confirm button disabled until "DELETE" typed correctly</idea>
+      <idea ac="1">Test case sensitivity of DELETE confirmation (or case-insensitive)</idea>
+      <idea ac="2">Test deleteAccount API call is made on confirmation</idea>
+      <idea ac="2">Test clearTokens() is called after successful deletion</idea>
+      <idea ac="2">Test all Zustand stores are reset after deletion</idea>
+      <idea ac="2">Test navigation to login screen after deletion</idea>
+      <idea ac="2">Test error handling when API call fails</idea>
+      <idea ac="3">Test login response includes accountRecovered flag when recovering</idea>
+      <idea ac="3">Test deletionScheduledAt is cleared on recovery</idea>
+      <idea ac="3">Test mobile shows recovery message when flag received</idea>
+    </ideas>
+  </tests>
+</story-context>

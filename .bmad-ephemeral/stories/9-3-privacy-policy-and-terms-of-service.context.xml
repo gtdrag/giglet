@@ -1,0 +1,167 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context" v="1.0">
+  <metadata>
+    <epicId>9</epicId>
+    <storyId>3</storyId>
+    <title>Privacy Policy and Terms of Service</title>
+    <status>drafted</status>
+    <generatedAt>2026-01-05</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/9-3-privacy-policy-and-terms-of-service.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>registered user</asA>
+    <iWant>to access the Privacy Policy and Terms of Service</iWant>
+    <soThat>I can understand how my data is used and the terms governing my use of the app</soThat>
+    <tasks>
+      <task id="1" ac="1,2">Create Legal Screen UI
+        <subtask>Create app/legal.tsx screen with navigation from accounts.tsx</subtask>
+        <subtask>Add Privacy Policy menu item with icon and chevron</subtask>
+        <subtask>Add Terms of Service menu item with icon and chevron</subtask>
+        <subtask>Style to match app design system (dark theme, cards)</subtask>
+        <subtask>Add descriptive text explaining legal documents</subtask>
+      </task>
+      <task id="2" ac="1,2">Implement Document Opening
+        <subtask>Import and configure expo-linking for URL handling</subtask>
+        <subtask>Implement openPrivacyPolicy() function to open URL in browser</subtask>
+        <subtask>Implement openTermsOfService() function to open URL in browser</subtask>
+        <subtask>Handle opening errors gracefully (show Alert if browser fails)</subtask>
+        <subtask>Use placeholder URLs (https://giglet.app/privacy, https://giglet.app/terms)</subtask>
+      </task>
+      <task id="3" ac="1,2">Update Accounts Screen Navigation
+        <subtask>Add Legal section to accounts.tsx</subtask>
+        <subtask>Add menu card with document-text icon</subtask>
+        <subtask>Navigate to legal.tsx on tap</subtask>
+        <subtask>Position below Preferences section, above Sign Out</subtask>
+      </task>
+      <task id="4" ac="1,2">Add Unit Tests
+        <subtask>Test legal screen renders correctly with both menu items</subtask>
+        <subtask>Test expo-linking openURL is called with correct URLs</subtask>
+        <subtask>Test error handling when URL opening fails</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <ac id="1">Given I am in Settings, When I tap "Privacy Policy", Then I see the full privacy policy (in-app or web), And I can scroll through the entire document.</ac>
+    <ac id="2">Given I tap "Terms of Service", When the document opens, Then I see the full terms of service.</ac>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-9.md</path>
+        <title>Epic 9 Technical Specification</title>
+        <section>Story 9.3: Privacy Policy and Terms of Service</section>
+        <snippet>AC 9.3.1 and AC 9.3.2 define legal document access via expo-linking. Uses LegalScreen component at app/legal.tsx.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-9.md</path>
+        <title>Epic 9 Technical Specification</title>
+        <section>Dependencies and Integrations</section>
+        <snippet>expo-linking ^8.0.11 used for opening legal document URLs in native browser.</snippet>
+      </doc>
+      <doc>
+        <path>.bmad-ephemeral/stories/tech-spec-epic-9.md</path>
+        <title>Epic 9 Technical Specification</title>
+        <section>Risks</section>
+        <snippet>R1: Legal documents may not be ready. Mitigation: Use placeholder URLs, update before release.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Architecture Document</title>
+        <section>Project Structure - Mobile App</section>
+        <snippet>File-based routing with Expo Router. Screens in app/ directory. Dark theme with colors #09090B, #18181B, #27272A.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <file>
+        <path>apps/mobile/app/accounts.tsx</path>
+        <kind>screen</kind>
+        <symbol>AccountsScreen</symbol>
+        <lines>1-827</lines>
+        <reason>Settings hub screen. Add Legal section following existing pattern (profileSection, notificationsSection, subscriptionSection). Use router.push('/legal') for navigation.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/app/notifications.tsx</path>
+        <kind>screen</kind>
+        <symbol>NotificationsScreen</symbol>
+        <lines>1-276</lines>
+        <reason>Reference for screen structure, header pattern, SafeAreaView usage, dark theme styling, and Ionicons usage.</reason>
+      </file>
+      <file>
+        <path>apps/mobile/app/profile.tsx</path>
+        <kind>screen</kind>
+        <symbol>ProfileScreen</symbol>
+        <reason>Reference for simple settings screen pattern with back navigation and header.</reason>
+      </file>
+    </code>
+    <dependencies>
+      <node>
+        <package>expo-linking</package>
+        <version>^8.0.11</version>
+        <purpose>Open URLs in native browser</purpose>
+      </node>
+      <node>
+        <package>expo-router</package>
+        <version>^6.0.21</version>
+        <purpose>File-based navigation</purpose>
+      </node>
+      <node>
+        <package>@expo/vector-icons</package>
+        <version>^15.0.3</version>
+        <purpose>Ionicons for menu item icons</purpose>
+      </node>
+      <node>
+        <package>react-native-safe-area-context</package>
+        <version>^5.6.2</version>
+        <purpose>SafeAreaView for screen layout</purpose>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="pattern">Follow dark theme colors: bg #09090B, card #18181B, border #27272A, text #FAFAFA, muted #71717A</constraint>
+    <constraint type="pattern">Use Pressable for interactive cards with chevron-forward icon</constraint>
+    <constraint type="pattern">Use SafeAreaView with edges={['top']} for screen container</constraint>
+    <constraint type="pattern">Use router.back() for back navigation, router.push() for forward navigation</constraint>
+    <constraint type="security">No authentication required for legal document URLs (public access)</constraint>
+    <constraint type="ux">Open legal documents in external browser, not in-app WebView</constraint>
+    <constraint type="config">Use placeholder URLs until legal team provides final documents</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>Linking.openURL</name>
+      <kind>function</kind>
+      <signature>openURL(url: string): Promise&lt;void&gt;</signature>
+      <path>expo-linking</path>
+    </interface>
+    <interface>
+      <name>router.push</name>
+      <kind>function</kind>
+      <signature>push(route: string): void</signature>
+      <path>expo-router</path>
+    </interface>
+    <interface>
+      <name>router.back</name>
+      <kind>function</kind>
+      <signature>back(): void</signature>
+      <path>expo-router</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>Vitest for unit testing. Use vi.mock() for mocking expo-linking and expo-router. Test files in __tests__ directories adjacent to source files. Follow patterns from settings.test.ts and settingsStore.test.ts.</standards>
+    <locations>
+      <location>apps/mobile/app/__tests__/</location>
+      <location>apps/mobile/src/**/__tests__/</location>
+    </locations>
+    <ideas>
+      <idea ac="1,2">Test legal screen renders Privacy Policy and Terms of Service menu items</idea>
+      <idea ac="1">Test Linking.openURL called with https://giglet.app/privacy when Privacy Policy tapped</idea>
+      <idea ac="2">Test Linking.openURL called with https://giglet.app/terms when Terms of Service tapped</idea>
+      <idea ac="1,2">Test Alert.alert shown when Linking.openURL throws error</idea>
+    </ideas>
+  </tests>
+</story-context>

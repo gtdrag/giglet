@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context version="1.0" story-id="9-1">
+  <metadata>
+    <generated>2026-01-05</generated>
+    <story-title>Profile View and Edit</story-title>
+    <epic>Epic 9: Settings &amp; Profile</epic>
+    <status>ready-for-dev</status>
+  </metadata>
+
+  <story-summary>
+    Implement Profile screen where users can view their profile information (name, email)
+    and edit their name. Email is displayed but not editable. Backend endpoints for
+    GET/PUT /api/v1/users/me needed (note: GET /auth/me already exists, can be leveraged).
+  </story-summary>
+
+  <acceptance-criteria>
+    <ac id="1">
+      Given I am on the Profile/Settings screen, When I view my profile,
+      Then I see my name and email, And I can edit my name, And email is displayed but not editable.
+    </ac>
+    <ac id="2">
+      Given I edit my name, When I save changes, Then my profile updates, And I see confirmation.
+    </ac>
+    <ac id="3">
+      Given I enter an empty name, When I try to save, Then I see validation error "Name cannot be empty".
+    </ac>
+  </acceptance-criteria>
+
+  <existing-infrastructure>
+    <critical-finding>
+      GET /api/v1/auth/me already exists in auth.routes.ts and returns user profile.
+      Consider adding PUT endpoint to auth routes or creating separate user routes.
+    </critical-finding>
+
+    <artifact type="store" path="apps/mobile/src/stores/authStore.ts">
+      <description>Zustand auth store with User interface and state management</description>
+      <relevant-interface>
+        <![CDATA[
+export interface User {
+  id: string;
+  email: string;
+  name?: string | null;
+}
+
+interface AuthState {
+  isAuthenticated: boolean;
+  user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
+  isLoading: boolean;
+  error: string | null;
+  setUser: (user: User | null) => void;
+  // ... other methods
+}
+        ]]>
+      </relevant-interface>
+      <usage-notes>
+        - setUser() can update cached user after profile save
+        - user object already has id, email, name fields needed
+        - isAuthenticated check available for guarding profile screen
+      </usage-notes>
+    </artifact>
+
+    <artifact type="routes" path="apps/api/src/routes/auth.routes.ts">
+      <description>Auth routes including existing GET /me endpoint</description>
+      <relevant-code>
+        <![CDATA[
+// GET /api/v1/auth/me - Already exists!
+router.get('/me', requireAuth, (req, res, next) =>
+  authController.getMe(req, res, next)
+);
+        ]]>
+      </relevant-code>
+      <usage-notes>
+        - GET /auth/me returns current user profile
+        - PUT /auth/me could be added here, OR
+        - Create new user.routes.ts with /users/me endpoints
+        - Story spec suggests /users/me path, but /auth/me already exists
+      </usage-notes>
+    </artifact>
+
+    <artifact type="controller" path="apps/api/src/controllers/auth.controller.ts">
+      <description>Auth controller with getMe method</description>
+      <relevant-code>
+        <![CDATA[
+async getMe(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const userId = req.userId!;
+    const user = await authService.getUserById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found' },
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          authProvider: user.authProvider,
+          createdAt: user.createdAt,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+        ]]>
+      </relevant-code>
+      <usage-notes>
+        - Response format matches story spec exactly
+        - Add updateMe method for PUT endpoint
+        - Use same response structure for consistency
+      </usage-notes>
+    </artifact>
+
+    <artifact type="service" path="apps/mobile/src/services/api.ts">
+      <description>Axios instance with auth interceptors</description>
+      <relevant-code>
+        <![CDATA[
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor adds Authorization header
+api.interceptors.request.use(async (config) => {
+  const { accessToken, refreshAccessToken } = useAuthStore.getState();
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+  return config;
+});
+        ]]>
+      </relevant-code>
+      <usage-notes>
+        - All API calls automatically include auth token
+        - Create user.ts service using this api instance
+        - Follow existing service patterns (earnings.ts, subscriptions.ts)
+      </usage-notes>
+    </artifact>
+
+    <artifact type="database" path="apps/api/prisma/schema.prisma">
+      <description>User and UserPreferences Prisma models</description>
+      <relevant-code>
+        <![CDATA[
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  passwordHash   String?
+  name           String?
+  authProvider   AuthProvider    @default(EMAIL)
+  appleId        String?         @unique
+  googleId       String?         @unique
+  refreshToken   String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  platformTokens PlatformToken[]
+  deliveries     Delivery[]
+  trips          Trip[]
+  preferences    UserPreferences?
+}
+
+model UserPreferences {
+  id                   String  @id @default(cuid())
+  userId               String  @unique
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notificationsEnabled Boolean @default(true)
+  zoneAlertsEnabled    Boolean @default(true)
+  autoMileageTracking  Boolean @default(true)
+  darkModeEnabled      Boolean @default(true)
+}
+        ]]>
+      </relevant-code>
+      <usage-notes>
+        - name field is optional String (can be null)
+        - Validation should require non-empty name when updating
+        - No schema changes needed for this story
+      </usage-notes>
+    </artifact>
+
+    <artifact type="navigation" path="apps/mobile/app/(tabs)/_layout.tsx">
+      <description>Current tab navigation layout</description>
+      <relevant-code>
+        <![CDATA[
+<Tabs.Screen
+  name="map"
+  options={{ title: 'Map', tabBarIcon: ({ color }) => <MapIcon color={color} size={24} /> }}
+/>
+<Tabs.Screen
+  name="dashboard"
+  options={{ title: 'Dashboard', tabBarIcon: ({ color }) => <LayoutDashboard color={color} size={24} /> }}
+/>
+<Tabs.Screen
+  name="mileage"
+  options={{ title: 'Mileage', tabBarIcon: ({ color }) => <Navigation color={color} size={24} /> }}
+/>
+        ]]>
+      </relevant-code>
+      <usage-notes>
+        - Currently only 3 tabs: Map, Dashboard, Mileage
+        - Settings tab needs to be added (possibly in this or future story)
+        - Profile screen should be accessible from settings menu
+        - May need to add Settings tab or use settings.tsx placeholder
+      </usage-notes>
+    </artifact>
+
+    <artifact type="screen-placeholder" path="apps/mobile/app/(tabs)/settings.tsx">
+      <description>Settings tab placeholder (if exists)</description>
+      <usage-notes>
+        - Check if settings.tsx exists in tabs directory
+        - If not, profile can be standalone screen navigated from gear icon
+        - Story Task 5 mentions updating settings tab navigation
+      </usage-notes>
+    </artifact>
+  </existing-infrastructure>
+
+  <implementation-guidance>
+    <recommendation priority="high">
+      <title>API Route Decision</title>
+      <description>
+        Story spec suggests /api/v1/users/me but GET /api/v1/auth/me already exists.
+        Two options:
+        1. Add PUT /auth/me to existing auth routes (simpler, reuses controller)
+        2. Create new /users routes (cleaner separation, follows spec)
+
+        Recommendation: Option 1 - Add PUT /auth/me alongside existing GET /auth/me
+        for consistency and less code duplication.
+      </description>
+    </recommendation>
+
+    <recommendation priority="high">
+      <title>Profile Screen Location</title>
+      <description>
+        Create app/profile.tsx as a stack screen (not a tab).
+        Navigate to it from a settings menu or header button.
+        Consider adding Settings tab with profile option.
+      </description>
+    </recommendation>
+
+    <recommendation priority="medium">
+      <title>State Updates</title>
+      <description>
+        After successful profile update, call authStore.setUser() with updated user data.
+        This keeps cached user in sync without requiring full re-fetch.
+      </description>
+    </recommendation>
+
+    <recommendation priority="medium">
+      <title>Validation Pattern</title>
+      <description>
+        Follow existing Zod validation pattern from auth.schema.ts.
+        Create user.schema.ts with updateProfileSchema:
+        - name: z.string().min(1, "Name cannot be empty").max(100)
+      </description>
+    </recommendation>
+  </implementation-guidance>
+
+  <test-ideas>
+    <test type="unit" location="apps/mobile/src/services/__tests__/user.test.ts">
+      <description>Test user service API calls</description>
+      <cases>
+        - getProfile() returns user data
+        - updateProfile() sends correct payload
+        - updateProfile() handles 400 validation error
+        - updateProfile() handles network error
+      </cases>
+    </test>
+
+    <test type="unit" location="apps/api/src/controllers/__tests__/user.controller.test.ts">
+      <description>Test user controller validation and response</description>
+      <cases>
+        - updateMe returns 400 for empty name
+        - updateMe returns 400 for name > 100 chars
+        - updateMe returns updated user on success
+        - updateMe requires authentication (401)
+      </cases>
+    </test>
+
+    <test type="component" location="apps/mobile/app/__tests__/profile.test.tsx">
+      <description>Test Profile screen rendering and interactions</description>
+      <cases>
+        - Renders name in editable TextInput
+        - Renders email in read-only field
+        - Shows validation error for empty name
+        - Calls updateProfile on save
+        - Shows success toast after save
+        - Shows loading state while saving
+      </cases>
+    </test>
+  </test-ideas>
+
+  <constraints>
+    <constraint type="security">
+      Users can only view/edit their own profile (enforced by JWT)
+    </constraint>
+    <constraint type="data">
+      Email is immutable - display only, not editable
+    </constraint>
+    <constraint type="validation">
+      Name must be non-empty and max 100 characters
+    </constraint>
+    <constraint type="ux">
+      Show clear error message "Name cannot be empty" for validation failure
+    </constraint>
+  </constraints>
+
+  <dependencies>
+    <dependency type="required" status="complete">
+      Epic 2 (User Authentication) - Login, registration, auth store
+    </dependency>
+    <dependency type="required" status="complete">
+      Epic 8 (Subscriptions) - Zustand patterns, API service patterns
+    </dependency>
+    <dependency type="internal" status="exists">
+      authStore.ts - User state management
+    </dependency>
+    <dependency type="internal" status="exists">
+      api.ts - Axios instance with auth interceptors
+    </dependency>
+  </dependencies>
+
+  <file-inventory>
+    <files-to-create>
+      <file>apps/mobile/app/profile.tsx</file>
+      <file>apps/mobile/src/services/user.ts</file>
+      <file>apps/mobile/src/services/__tests__/user.test.ts</file>
+      <file>apps/api/src/schemas/user.schema.ts</file>
+    </files-to-create>
+    <files-to-modify>
+      <file reason="Add PUT /auth/me endpoint">apps/api/src/routes/auth.routes.ts</file>
+      <file reason="Add updateMe method">apps/api/src/controllers/auth.controller.ts</file>
+      <file reason="Add updateUser method">apps/api/src/services/auth.service.ts</file>
+      <file reason="Add profile navigation">apps/mobile/app/(tabs)/settings.tsx</file>
+    </files-to-modify>
+  </file-inventory>
+</story-context>

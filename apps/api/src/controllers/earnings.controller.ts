@@ -64,8 +64,8 @@ class EarningsController {
         userId,
         period,
         timezone,
-        limit,
-        offset,
+        Number(limit) || 50,
+        Number(offset) || 0,
         platform as Platform | undefined
       );
 

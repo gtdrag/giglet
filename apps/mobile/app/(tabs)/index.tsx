@@ -1,9 +1,17 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, AppState, AppStateStatus } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, AppState, AppStateStatus, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { PROVIDER_GOOGLE, Region, Circle, MapPressEvent } from 'react-native-maps';
 import * as Location from 'expo-location';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import { LogTipFAB } from '../../src/components/tips/LogTipFAB';
+import { TipSizePicker } from '../../src/components/tips/TipSizePicker';
+import { TipsToggle } from '../../src/components/tips/TipsToggle';
+import { TipMarkersLayer } from '../../src/components/tips/TipMarkersLayer';
+import { TipSizeFilter, TipFilterOption } from '../../src/components/tips/TipSizeFilter';
+import { logTip, getTipsInViewport, TipSize, TipLog } from '../../src/services/tips';
+import { useLocalSettingsStore } from '../../src/stores/localSettingsStore';
 
 // Refresh interval: 15 minutes in milliseconds
 const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
@@ -87,8 +95,24 @@ export default function MapPage() {
   const [selectedZoneData, setSelectedZoneData] = useState<ZoneScoreResponse | null>(null);
   const [selectedZoneCoords, setSelectedZoneCoords] = useState<{ lat: number; lng: number } | null>(null);
 
+  // Tip logging state
+  const [tipPickerVisible, setTipPickerVisible] = useState(false);
+  const [isSavingTip, setIsSavingTip] = useState(false);
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
+
+  // Tip markers layer state (Story 10-3)
+  const [tipsLayerEnabled, setTipsLayerEnabled] = useState(false);
+  const [viewportTips, setViewportTips] = useState<TipLog[]>([]);
+  const [isLoadingTips, setIsLoadingTips] = useState(false);
+  const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
+  const tipsFetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Tip filter state (Story 10-4)
+  const { tipSizeFilter, loadSettings, setTipSizeFilter, isLoaded: settingsLoaded } = useLocalSettingsStore();
+
   useEffect(() => {
     requestLocationPermission();
+    loadSettings(); // Load persisted filter setting
   }, []);
 
   // Update relative time display every minute
@@ -170,11 +194,14 @@ export default function MapPage() {
 
       if (status !== 'granted') {
         setErrorMsg('Location permission denied. Enable location to see Focus Zones near you.');
+        setHasLocationPermission(false);
         setLocation(DEFAULT_LOCATION);
         setIsLoading(false);
         loadZonesWithAnimation(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude);
         return;
       }
+
+      setHasLocationPermission(true);
 
       const currentLocation = await withTimeout(
         Location.getCurrentPositionAsync({
@@ -304,6 +331,151 @@ export default function MapPage() {
     }
   }, [zones, handleZoneTap]);
 
+  // Tip logging handlers
+  const handleOpenTipPicker = useCallback(async () => {
+    // Check location permission first
+    const { status } = await Location.getForegroundPermissionsAsync();
+
+    if (status !== 'granted') {
+      Alert.alert(
+        'Location Required',
+        'Location permission is required to log tips. This helps you remember where good tippers are.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Grant Permission',
+            onPress: async () => {
+              const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
+              if (newStatus === 'granted') {
+                setHasLocationPermission(true);
+                setTipPickerVisible(true);
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    setTipPickerVisible(true);
+  }, []);
+
+  const handleTipSelect = useCallback(async (tipSize: TipSize) => {
+    setIsSavingTip(true);
+
+    try {
+      // Get current location
+      const currentLocation = await withTimeout(
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        }),
+        LOCATION_TIMEOUT_MS,
+        'Location request timed out'
+      );
+
+      // Log the tip
+      await logTip({
+        lat: currentLocation.coords.latitude,
+        lng: currentLocation.coords.longitude,
+        tipSize,
+      });
+
+      // Success haptic feedback
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Close picker and show success message
+      setTipPickerVisible(false);
+      Alert.alert('Tip logged!', `Saved ${tipSize === 'NONE' ? 'no tip' : tipSize} location.`);
+
+      // Refresh tips layer if enabled (Story 10-3)
+      if (tipsLayerEnabled && currentRegion) {
+        fetchTipsInViewport(currentRegion);
+      }
+    } catch (error) {
+      console.warn('Failed to log tip:', error instanceof Error ? error.message : error);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Error', 'Failed to log tip. Please try again.');
+    } finally {
+      setIsSavingTip(false);
+    }
+  }, []);
+
+  const handleCloseTipPicker = useCallback(() => {
+    if (!isSavingTip) {
+      setTipPickerVisible(false);
+    }
+  }, [isSavingTip]);
+
+  // Fetch tips within the visible viewport (Story 10-3, 10-4)
+  const fetchTipsInViewport = useCallback(async (region: Region, filterOverride?: TipFilterOption) => {
+    if (!tipsLayerEnabled) return;
+
+    setIsLoadingTips(true);
+    try {
+      const bounds = {
+        minLat: region.latitude - region.latitudeDelta / 2,
+        maxLat: region.latitude + region.latitudeDelta / 2,
+        minLng: region.longitude - region.longitudeDelta / 2,
+        maxLng: region.longitude + region.longitudeDelta / 2,
+      };
+      // Use filter override if provided, otherwise use current filter from store (Story 10-4)
+      const activeFilter = filterOverride !== undefined ? filterOverride : tipSizeFilter;
+      const response = await getTipsInViewport(bounds, {
+        limit: 100,
+        tipSize: activeFilter ?? undefined,
+      });
+      setViewportTips(response.tips);
+    } catch (error) {
+      console.warn('Failed to fetch tips:', error instanceof Error ? error.message : error);
+    } finally {
+      setIsLoadingTips(false);
+    }
+  }, [tipsLayerEnabled, tipSizeFilter]);
+
+  // Handle map region change (debounced)
+  const handleRegionChange = useCallback((region: Region) => {
+    setCurrentRegion(region);
+
+    // Debounce tip fetching to avoid excessive API calls
+    if (tipsFetchDebounceRef.current) {
+      clearTimeout(tipsFetchDebounceRef.current);
+    }
+
+    if (tipsLayerEnabled) {
+      tipsFetchDebounceRef.current = setTimeout(() => {
+        fetchTipsInViewport(region);
+      }, 500); // 500ms debounce
+    }
+  }, [tipsLayerEnabled, fetchTipsInViewport]);
+
+  // Handle tips layer toggle
+  const handleTipsLayerToggle = useCallback((enabled: boolean) => {
+    setTipsLayerEnabled(enabled);
+    if (enabled && currentRegion) {
+      // Fetch tips immediately when layer is enabled
+      fetchTipsInViewport(currentRegion);
+    } else if (!enabled) {
+      // Clear tips when layer is disabled
+      setViewportTips([]);
+    }
+  }, [currentRegion, fetchTipsInViewport]);
+
+  // Refresh tips after logging a new tip
+  const refreshTipsAfterLog = useCallback(() => {
+    if (tipsLayerEnabled && currentRegion) {
+      fetchTipsInViewport(currentRegion);
+    }
+  }, [tipsLayerEnabled, currentRegion, fetchTipsInViewport]);
+
+  // Handle tip filter change (Story 10-4)
+  const handleTipFilterChange = useCallback(async (newFilter: TipFilterOption) => {
+    await setTipSizeFilter(newFilter);
+    // Refresh tips with new filter if layer is enabled
+    if (tipsLayerEnabled && currentRegion) {
+      fetchTipsInViewport(currentRegion, newFilter);
+    }
+  }, [setTipSizeFilter, tipsLayerEnabled, currentRegion, fetchTipsInViewport]);
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -355,6 +527,7 @@ export default function MapPage() {
             showsCompass
             customMapStyle={darkMapStyle}
             onPress={handleMapPress}
+            onRegionChangeComplete={handleRegionChange}
           >
             {/* Zone circles */}
             {zones.map((zone) => (
@@ -367,10 +540,15 @@ export default function MapPage() {
                 strokeWidth={2}
               />
             ))}
+
+            {/* Tip markers layer (Story 10-3) */}
+            {tipsLayerEnabled && currentRegion && viewportTips.length > 0 && (
+              <TipMarkersLayer tips={viewportTips} region={currentRegion} />
+            )}
           </MapView>
         )}
 
-        {/* Legend with timestamp */}
+        {/* Legend with timestamp and tips toggle */}
         <View style={styles.legendContainer}>
           <View style={styles.legend}>
             <View style={styles.legendItem}>
@@ -396,10 +574,32 @@ export default function MapPage() {
               <Text style={styles.timestampText}>{relativeTime}</Text>
             </View>
           )}
+          {/* Tips layer toggle (Story 10-3) */}
+          <TipsToggle
+            enabled={tipsLayerEnabled}
+            onToggle={handleTipsLayerToggle}
+            isLoading={isLoadingTips}
+            tipCount={viewportTips.length}
+            disabled={isAnalyzing}
+          />
+          {/* Tip filter (Story 10-4) - show only when tips layer is enabled */}
+          {tipsLayerEnabled && settingsLoaded && (
+            <TipSizeFilter
+              value={tipSizeFilter}
+              onChange={handleTipFilterChange}
+              disabled={isAnalyzing || isLoadingTips}
+            />
+          )}
         </View>
 
         {/* Bottom buttons container */}
         <View style={styles.bottomButtons}>
+          {/* Log Tip FAB */}
+          <LogTipFAB
+            onPress={handleOpenTipPicker}
+            disabled={isAnalyzing}
+          />
+
           {/* Refresh button */}
           <TouchableOpacity
             style={[styles.mapButton, isRefreshing && styles.mapButtonDisabled]}
@@ -444,6 +644,31 @@ export default function MapPage() {
         latitude={selectedZoneCoords?.lat}
         longitude={selectedZoneCoords?.lng}
       />
+
+      {/* Tip Size Picker Modal */}
+      <Modal
+        visible={tipPickerVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCloseTipPicker}
+      >
+        <View style={styles.tipModalOverlay}>
+          <View style={styles.tipModalContent}>
+            <TouchableOpacity
+              style={styles.tipModalClose}
+              onPress={handleCloseTipPicker}
+              disabled={isSavingTip}
+            >
+              <Ionicons name="close" size={24} color="#71717A" />
+            </TouchableOpacity>
+            <TipSizePicker
+              onSelect={handleTipSelect}
+              disabled={isSavingTip}
+              isLoading={isSavingTip}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -626,5 +851,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#71717A',
     marginTop: 2,
+  },
+  tipModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  tipModalContent: {
+    backgroundColor: '#09090B',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 12,
+    paddingBottom: 20,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#27272A',
+  },
+  tipModalClose: {
+    alignSelf: 'flex-end',
+    padding: 12,
+    marginRight: 8,
   },
 });

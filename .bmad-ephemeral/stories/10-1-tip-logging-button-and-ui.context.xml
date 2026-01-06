@@ -1,0 +1,170 @@
+<story-context id="10-1-tip-logging-button-and-ui" v="1.0">
+  <metadata>
+    <epicId>10</epicId>
+    <storyId>1</storyId>
+    <title>Tip Logging Button and UI</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2026-01-06</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/10-1-tip-logging-button-and-ui.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>driver who just received a good tip</asA>
+    <iWant>to quickly log this location</iWant>
+    <soThat>I can remember where good tippers are</soThat>
+    <tasks>
+      <task id="1" ac="1">Create TipLog Database Model - Add TipLog model to Prisma schema with TipSize enum (NONE, SMALL, MEDIUM, LARGE, XLARGE, XXLARGE), run migration, add spatial index</task>
+      <task id="2" ac="1">Create Backend API Endpoint - POST /api/v1/tips with Zod validation, following existing route/controller/service pattern</task>
+      <task id="3" ac="1">Create Mobile Tips Service - src/services/tips.ts with logTip() function that captures location and calls API</task>
+      <task id="4" ac="1,3">Create Tip Size Picker Component - src/components/tips/TipSizePicker.tsx with t-shirt size buttons and haptic feedback</task>
+      <task id="5" ac="1,2">Create Log Tip FAB Component - src/components/tips/LogTipFAB.tsx positioned bottom-right of map</task>
+      <task id="6" ac="1,2">Integrate FAB into Map Page - Add LogTipFAB to app/(tabs)/index.tsx in bottomButtons container</task>
+      <task id="7" ac="1,3">Implement Tip Logging Flow - FAB opens bottom sheet, size selection captures GPS, calls API, shows toast, haptic feedback</task>
+      <task id="8" ac="4">Handle Location Permission Edge Cases - Check permission before picker, show alert if denied, provide settings link</task>
+      <task id="9" ac="1,3,4">Add Unit Tests - Backend POST /tips tests, mobile tips service tests, TipSizePicker component tests</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">Given I am on the Map tab, When I tap the "Log Tip" FAB, Then I see a quick picker with t-shirt sizes (None|S|M|L|XL|XXL), And selecting a size saves my current GPS location with that rating, And I see brief confirmation ("Tip logged!")</criterion>
+    <criterion id="2">Given I am anywhere in the app, When I want to log a tip, Then I can access the Log Tip button from the map tab quickly</criterion>
+    <criterion id="3">Given I tap a tip size option, When the tip is saved, Then I feel haptic feedback confirming the action</criterion>
+    <criterion id="4">Given location permissions are not granted, When I try to log a tip, Then I see a message explaining location is required, And I can navigate to grant permission</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Giglet Epic Breakdown</title>
+        <section>Epic 10: Tip Tracker - Story 10.1</section>
+        <snippet>Enable drivers to bookmark locations where they received good tips using one-tap logging with t-shirt size rating (S/M/L/XL/XXL). Builds personalized tip intelligence over time.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Giglet Architecture Document</title>
+        <section>Technology Stack, Project Structure</section>
+        <snippet>Mobile: Expo SDK 54, TypeScript, Zustand state management, expo-location for GPS. Backend: Express, Prisma ORM, PostgreSQL with PostGIS, Zod validation.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <artifact>
+        <path>apps/mobile/app/(tabs)/index.tsx</path>
+        <kind>screen</kind>
+        <symbol>MapPage</symbol>
+        <lines>1-631</lines>
+        <reason>Map screen where LogTipFAB will be added. Has existing bottomButtons container (line 402-420) with refresh and center-on-user buttons. Uses expo-location for GPS.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/app/(tabs)/_layout.tsx</path>
+        <kind>layout</kind>
+        <symbol>MainLayout</symbol>
+        <lines>1-159</lines>
+        <reason>Tab navigation layout. Map tab renders MapPage. Understanding navigation structure.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/api/prisma/schema.prisma</path>
+        <kind>schema</kind>
+        <symbol>Prisma schema</symbol>
+        <lines>1-239</lines>
+        <reason>Database schema where TipLog model will be added. Reference Zone model (line 216-238) for spatial patterns.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/api/src/routes/earnings.routes.ts</path>
+        <kind>routes</kind>
+        <symbol>earnings routes</symbol>
+        <lines>1-139</lines>
+        <reason>Reference for route/controller pattern - requireAuth middleware, validateRequest middleware, Zod schema imports.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/src/services/zones.ts</path>
+        <kind>service</kind>
+        <symbol>zones service</symbol>
+        <reason>Reference for mobile API service pattern using api.ts client.</reason>
+      </artifact>
+      <artifact>
+        <path>apps/mobile/src/components/ZoneDetailModal.tsx</path>
+        <kind>component</kind>
+        <symbol>ZoneDetailModal</symbol>
+        <reason>Reference for modal/bottom sheet pattern used in map context.</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <mobile>
+        <package name="expo" version="~54.0.30" />
+        <package name="expo-location" version="~19.0.8" />
+        <package name="expo-haptics" version="not-installed" note="NEEDS TO BE INSTALLED" />
+        <package name="zustand" version="^5.0.9" />
+        <package name="axios" version="^1.13.2" />
+        <package name="react-native-maps" version="1.20.1" />
+        <package name="@expo/vector-icons" version="^15.0.3" />
+      </mobile>
+      <api>
+        <package name="express" version="^5.2.1" />
+        <package name="@prisma/client" version="^6.19.1" />
+        <package name="zod" version="^4.3.4" />
+        <package name="prisma" version="^6.19.1" />
+      </api>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Follow existing Express route/controller/service pattern from earnings.routes.ts</constraint>
+    <constraint>Use Zod for request validation with Prisma enum types</constraint>
+    <constraint>Use Zustand for client-side state if needed (optional for simple logging)</constraint>
+    <constraint>Use expo-location for GPS coordinates (already imported in MapPage)</constraint>
+    <constraint>Add expo-haptics dependency for haptic feedback (npm install expo-haptics)</constraint>
+    <constraint>Position FAB in bottomButtons container alongside existing refresh/center buttons</constraint>
+    <constraint>Use dark theme colors: #09090B background, #18181B cards, #FAFAFA text, #22C55E green for success</constraint>
+    <constraint>Use Ionicons for FAB icon (cash-outline or similar)</constraint>
+    <constraint>Location permission already requested in MapPage - leverage existing permission state</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>POST /api/v1/tips</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /api/v1/tips - Body: { lat: number, lng: number, tipSize: TipSize } - Response: { success: true, data: TipLog }</signature>
+      <path>apps/api/src/routes/tips.routes.ts (to create)</path>
+    </interface>
+    <interface>
+      <name>TipSize enum</name>
+      <kind>Prisma enum</kind>
+      <signature>enum TipSize { NONE, SMALL, MEDIUM, LARGE, XLARGE, XXLARGE }</signature>
+      <path>apps/api/prisma/schema.prisma</path>
+    </interface>
+    <interface>
+      <name>TipLog model</name>
+      <kind>Prisma model</kind>
+      <signature>model TipLog { id: String, userId: String, lat: Float, lng: Float, tipSize: TipSize, createdAt: DateTime }</signature>
+      <path>apps/api/prisma/schema.prisma</path>
+    </interface>
+    <interface>
+      <name>logTip function</name>
+      <kind>Mobile service function</kind>
+      <signature>logTip(tipSize: TipSize): Promise&lt;TipLog&gt;</signature>
+      <path>apps/mobile/src/services/tips.ts (to create)</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>Use Vitest for both mobile and API tests. Mobile tests use vi.hoisted() for proper mock setup. API tests mock Prisma client. Follow existing test patterns in src/services/__tests__/ and src/stores/__tests__/ directories.</standards>
+    <locations>
+      <location>apps/api/src/**/__tests__/*.test.ts</location>
+      <location>apps/mobile/src/**/__tests__/*.test.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="1">Test POST /tips creates TipLog record with correct userId, lat, lng, tipSize</idea>
+      <idea ac="1">Test POST /tips validation rejects invalid tipSize values</idea>
+      <idea ac="1">Test POST /tips requires authentication (returns 401 without token)</idea>
+      <idea ac="1">Test logTip service function calls API with correct payload</idea>
+      <idea ac="1">Test logTip service handles API errors gracefully</idea>
+      <idea ac="3">Test TipSizePicker renders all 6 size options (None, S, M, L, XL, XXL)</idea>
+      <idea ac="3">Test TipSizePicker calls onSelect callback with correct tipSize</idea>
+      <idea ac="4">Test tip logging shows permission alert when location denied</idea>
+    </ideas>
+  </tests>
+</story-context>

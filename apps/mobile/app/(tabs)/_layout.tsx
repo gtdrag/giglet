@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect } from 'expo-router';
@@ -7,11 +7,10 @@ import DashboardPage from './dashboard';
 import MileagePage from './mileage';
 import { useMileageStore } from '../../src/stores/mileageStore';
 import { useAuthStore } from '../../src/stores/authStore';
-
-type Page = 'map' | 'dashboard' | 'mileage';
+import { useTabNavigationStore } from '../../src/stores/tabNavigationStore';
 
 export default function MainLayout() {
-  const [currentPage, setCurrentPage] = useState<Page>('map');
+  const { currentPage, setCurrentPage } = useTabNavigationStore();
   const { trackingEnabled, loadTrackingPreference, checkPermission } = useMileageStore();
   const { isAuthenticated, isLoading, checkAuthStatus } = useAuthStore();
 

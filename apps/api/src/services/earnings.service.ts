@@ -366,8 +366,14 @@ class EarningsService {
     second: number,
     timezone: string
   ): Date {
+    // Use Date constructor to handle day overflow/underflow (e.g., day=-1 becomes last day of previous month)
+    const normalizedDate = new Date(year, month, day, hour, minute, second);
+    const normalizedYear = normalizedDate.getFullYear();
+    const normalizedMonth = normalizedDate.getMonth();
+    const normalizedDay = normalizedDate.getDate();
+
     // Create a date string and parse it as if it's in the target timezone
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
+    const dateStr = `${normalizedYear}-${String(normalizedMonth + 1).padStart(2, '0')}-${String(normalizedDay).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
 
     // Get the offset for this timezone at this date
     const localDate = new Date(dateStr);

@@ -200,8 +200,8 @@ async function storeDeliveries(
     deliveries.map((delivery) =>
       prisma.delivery.upsert({
         where: {
-          platform_externalId: {
-            platform,
+          userId_externalId: {
+            userId,
             externalId: delivery.externalId,
           },
         },

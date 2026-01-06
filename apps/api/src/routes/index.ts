@@ -4,6 +4,9 @@ import authRoutes from './auth.routes';
 import platformRoutes from './platform.routes';
 import earningsRoutes from './earnings.routes';
 import zonesRoutes from './zones.routes';
+import subscriptionsRoutes from './subscriptions.routes';
+import usersRoutes from './users.routes';
+import tipsRoutes from './tips.routes';
 
 const router = Router();
 
@@ -43,10 +46,17 @@ router.use('/earnings', earningsRoutes);
 // Zones routes (Epic 5)
 router.use('/zones', zonesRoutes);
 
+// Subscriptions routes (Epic 8)
+router.use('/subscriptions', subscriptionsRoutes);
+
+// Users routes (Epic 9)
+router.use('/users', usersRoutes);
+
+// Tips routes (Epic 10)
+router.use('/tips', tipsRoutes);
+
 // Future route modules will be added here:
 // router.use('/mileage', mileageRoutes);
 // router.use('/exports', exportRoutes);
-// router.use('/subscription', subscriptionRoutes);
-// router.use('/users', userRoutes);
 
 export default router;

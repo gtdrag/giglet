@@ -15,15 +15,16 @@ datasource db {
 // ============ USERS ============
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  passwordHash String?
-  name         String?
-  authProvider AuthProvider @default(EMAIL)
-  appleId      String?      @unique
-  googleId     String?      @unique
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id                  String       @id @default(cuid())
+  email               String       @unique
+  passwordHash        String?
+  name                String?
+  authProvider        AuthProvider @default(EMAIL)
+  appleId             String?      @unique
+  googleId            String?      @unique
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  deletionScheduledAt DateTime?    // Soft delete: null = active, set = pending deletion
 
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
@@ -33,6 +34,7 @@ model User {
   subscription     Subscription?
   preferences      UserPreferences?
   importBatches    ImportBatch[]
+  tipLogs          TipLog[]
 }
 
 enum AuthProvider {
@@ -66,13 +68,14 @@ model PasswordResetToken {
 }
 
 model UserPreferences {
-  id                   String  @id @default(cuid())
-  userId               String  @unique
-  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  notificationsEnabled Boolean @default(true)
-  zoneAlertsEnabled    Boolean @default(true)
-  autoMileageTracking  Boolean @default(true)
-  darkModeEnabled      Boolean @default(true)
+  id                    String  @id @default(cuid())
+  userId                String  @unique
+  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notificationsEnabled  Boolean @default(true)
+  zoneAlertsEnabled     Boolean @default(true)
+  syncErrorAlertsEnabled Boolean @default(true)
+  autoMileageTracking   Boolean @default(true)
+  darkModeEnabled       Boolean @default(true)
 }
 
 // ============ PLATFORM ACCOUNTS ============
@@ -233,4 +236,28 @@ model Zone {
 
   @@index([h3Index])
   @@index([currentScore])
+}
+
+// ============ TIP TRACKING ============
+
+enum TipSize {
+  NONE
+  SMALL
+  MEDIUM
+  LARGE
+  XLARGE
+  XXLARGE
+}
+
+model TipLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lat       Float
+  lng       Float
+  tipSize   TipSize
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([lat, lng])
 }

@@ -1,4 +1,5 @@
-import api, { storeTokens, clearTokens, hasStoredTokens } from './api';
+import api, { storeTokens, clearTokens, hasStoredTokens, TOKEN_KEYS } from './api';
+import * as SecureStore from 'expo-secure-store';
 import { AxiosError } from 'axios';
 
 export interface User {
@@ -11,6 +12,7 @@ export interface AuthResponse {
   user: User;
   accessToken: string;
   refreshToken: string;
+  accountRecovered?: boolean; // True if account was pending deletion and recovered
 }
 
 export interface ApiError {
@@ -77,12 +79,12 @@ export async function login(input: LoginInput): Promise<AuthResponse> {
   try {
     const response = await api.post<{ success: true; data: AuthResponse }>('/auth/login', input);
 
-    const { accessToken, refreshToken, user } = response.data.data;
+    const { accessToken, refreshToken, user, accountRecovered } = response.data.data;
 
     // Store tokens securely
     await storeTokens(accessToken, refreshToken);
 
-    return { user, accessToken, refreshToken };
+    return { user, accessToken, refreshToken, accountRecovered };
   } catch (error) {
     if (error instanceof AxiosError && error.response?.data) {
       const apiError = error.response.data.error as ApiError;
@@ -153,9 +155,27 @@ export async function forgotPassword(input: ForgotPasswordInput): Promise<void> 
 
 /**
  * Logout user and clear tokens
+ * Revokes refresh token on server before clearing local storage
  */
 export async function logout(): Promise<void> {
-  await clearTokens();
+  try {
+    // Get refresh token before clearing
+    const refreshToken = await SecureStore.getItemAsync(TOKEN_KEYS.REFRESH_TOKEN);
+
+    // Revoke refresh token on server (best effort - don't fail logout if this fails)
+    if (refreshToken) {
+      try {
+        await api.post('/auth/logout', { refreshToken });
+      } catch {
+        // Server logout failed, but continue with local cleanup
+        // Token will eventually expire on server
+        console.warn('Server logout failed, continuing with local cleanup');
+      }
+    }
+  } finally {
+    // Always clear local tokens regardless of server response
+    await clearTokens();
+  }
 }
 
 /**
@@ -163,6 +183,27 @@ export async function logout(): Promise<void> {
  */
 export async function isLoggedIn(): Promise<boolean> {
   return hasStoredTokens();
+}
+
+export interface DeleteAccountResponse {
+  message: string;
+  deletionScheduledAt: string;
+}
+
+/**
+ * Delete user account (soft delete with 30-day grace period)
+ */
+export async function deleteAccount(): Promise<DeleteAccountResponse> {
+  try {
+    const response = await api.delete<{ success: true; data: DeleteAccountResponse }>('/auth/account');
+    return response.data.data;
+  } catch (error) {
+    if (error instanceof AxiosError && error.response?.data) {
+      const apiError = error.response.data.error as ApiError;
+      throw new AuthError(apiError.code, apiError.message, apiError.details);
+    }
+    throw error;
+  }
 }
 
 /**

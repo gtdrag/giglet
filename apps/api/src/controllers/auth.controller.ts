@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/auth.service';
 import { successResponse } from '../types/api.types';
+import { prisma } from '../lib/prisma';
 import type {
   RegisterInput,
   LoginInput,
@@ -10,6 +11,7 @@ import type {
   ForgotPasswordInput,
   ResetPasswordInput,
 } from '../schemas/auth.schema';
+import type { UpdateProfileInput } from '../schemas/user.schema';
 
 class AuthController {
   /**
@@ -47,6 +49,7 @@ class AuthController {
           user: result.user,
           accessToken: result.tokens.accessToken,
           refreshToken: result.tokens.refreshToken,
+          accountRecovered: result.accountRecovered || false,
         })
       );
     } catch (error) {
@@ -157,6 +160,124 @@ class AuthController {
       await authService.resetPassword(input);
 
       res.json(successResponse({ message: 'Password reset successfully. You can now log in.' }));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/v1/auth/me
+   * Get current user's profile including subscription status
+   */
+  async getMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+
+      if (!userId) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          subscription: true,
+        },
+      });
+
+      if (!user) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
+
+      // Return user data with subscription info
+      res.json(
+        successResponse({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          subscription: user.subscription
+            ? {
+                tier: user.subscription.tier,
+                status: user.subscription.status,
+                currentPeriodStart: user.subscription.currentPeriodStart,
+                currentPeriodEnd: user.subscription.currentPeriodEnd,
+              }
+            : {
+                tier: 'FREE',
+                status: 'ACTIVE',
+                currentPeriodStart: null,
+                currentPeriodEnd: null,
+              },
+        })
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * PUT /api/v1/auth/me
+   * Update current user's profile (name only)
+   */
+  async updateMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+
+      if (!userId) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const input: UpdateProfileInput = req.body;
+
+      // Update user name
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data: { name: input.name },
+        include: {
+          subscription: true,
+        },
+      });
+
+      // Return updated user data
+      res.json(
+        successResponse({
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            authProvider: user.authProvider,
+            createdAt: user.createdAt,
+          },
+        })
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * DELETE /api/v1/auth/account
+   * Delete user account (soft delete with 30-day grace period)
+   */
+  async deleteAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+
+      if (!userId) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const result = await authService.deleteAccount(userId);
+
+      res.json(
+        successResponse({
+          message: 'Account scheduled for deletion',
+          deletionScheduledAt: result.deletionScheduledAt.toISOString(),
+        })
+      );
     } catch (error) {
       next(error);
     }

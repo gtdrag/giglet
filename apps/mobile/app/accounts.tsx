@@ -16,7 +16,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { usePlatformStore } from '../src/stores/platformStore';
+import { useAuthStore } from '../src/stores/authStore';
+import { useSubscriptionStore, SubscriptionTier } from '../src/stores/subscriptionStore';
 import type { Platform as PlatformType } from '../src/services/platforms';
+
+/**
+ * Map internal tier to user-friendly display label
+ */
+function getTierLabel(tier: SubscriptionTier): string {
+  switch (tier) {
+    case 'PRO_ANNUAL':
+      return 'Pro Annual';
+    case 'PRO_MONTHLY':
+      return 'Pro Monthly';
+    case 'FREE':
+    default:
+      return 'Free';
+  }
+}
 
 interface PlatformInfo {
   id: PlatformType;
@@ -33,16 +50,26 @@ const PLATFORMS: PlatformInfo[] = [
 export default function AccountsScreen() {
   const { platforms, isLoading, error, fetchPlatforms, connectPlatform, disconnectPlatform, clearError } =
     usePlatformStore();
+  const { logout, deleteAccount } = useAuthStore();
+  const { tier, isProUser, loadSubscription } = useSubscriptionStore();
   const [connectingPlatform, setConnectingPlatform] = useState<PlatformInfo | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Delete account state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
   useEffect(() => {
     fetchPlatforms();
-  }, [fetchPlatforms]);
+    loadSubscription();
+  }, [fetchPlatforms, loadSubscription]);
 
   const getPlatformStatus = (platformId: PlatformType) => {
     const platform = platforms.find((p) => p.platform === platformId);
@@ -111,6 +138,61 @@ export default function AccountsScreen() {
     setFormError('');
   };
 
+  const handleSignOut = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          setIsLoggingOut(true);
+          try {
+            await logout();
+            router.replace('/(auth)/login');
+          } catch {
+            Alert.alert('Error', 'Failed to sign out. Please try again.');
+          } finally {
+            setIsLoggingOut(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleOpenDeleteModal = () => {
+    setShowDeleteModal(true);
+    setDeleteConfirmText('');
+    setDeleteError('');
+  };
+
+  const handleCloseDeleteModal = () => {
+    setShowDeleteModal(false);
+    setDeleteConfirmText('');
+    setDeleteError('');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deleteConfirmText !== 'DELETE') {
+      setDeleteError('Please type DELETE to confirm');
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError('');
+
+    try {
+      await deleteAccount();
+      setShowDeleteModal(false);
+      // Navigate to login with message - the deleteAccount function handles this
+    } catch {
+      setDeleteError('Failed to delete account. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const isDeleteConfirmed = deleteConfirmText === 'DELETE';
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
@@ -172,6 +254,143 @@ export default function AccountsScreen() {
         <View style={styles.trustSection}>
           <Ionicons name="close-circle" size={20} color="#10b981" />
           <Text style={styles.trustText}>You can disconnect at any time</Text>
+        </View>
+
+        {/* Profile Section */}
+        <View style={styles.profileSection}>
+          <Text style={styles.profileSectionTitle}>Account</Text>
+          <Pressable
+            style={styles.profileCard}
+            onPress={() => router.push('/profile')}
+          >
+            <View style={styles.profileInfo}>
+              <View style={styles.profileIconContainer}>
+                <Ionicons name="person" size={24} color="#06B6D4" />
+              </View>
+              <View style={styles.profileTextContainer}>
+                <Text style={styles.profileName}>
+                  {useAuthStore.getState().user?.name || 'No name set'}
+                </Text>
+                <Text style={styles.profileEmail}>
+                  {useAuthStore.getState().user?.email || ''}
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#71717A" />
+          </Pressable>
+        </View>
+
+        {/* Notifications Section */}
+        <View style={styles.notificationsSection}>
+          <Text style={styles.notificationsSectionTitle}>Preferences</Text>
+          <Pressable
+            style={styles.notificationsCard}
+            onPress={() => router.push('/notifications')}
+          >
+            <View style={styles.notificationsInfo}>
+              <View style={styles.notificationsIconContainer}>
+                <Ionicons name="notifications" size={24} color="#F59E0B" />
+              </View>
+              <View style={styles.notificationsTextContainer}>
+                <Text style={styles.notificationsTitle}>Notifications</Text>
+                <Text style={styles.notificationsHint}>Manage your notification preferences</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#71717A" />
+          </Pressable>
+        </View>
+
+        {/* Subscription Section */}
+        <View style={styles.subscriptionSection}>
+          <Text style={styles.subscriptionSectionTitle}>Subscription</Text>
+          <Pressable
+            style={styles.subscriptionCard}
+            onPress={() => router.push('/subscription')}
+          >
+            <View style={styles.subscriptionInfo}>
+              <View style={styles.subscriptionIconContainer}>
+                <Ionicons
+                  name={isProUser ? 'star' : 'star-outline'}
+                  size={24}
+                  color={isProUser ? '#10b981' : '#71717A'}
+                />
+              </View>
+              <View>
+                <View style={styles.subscriptionTierRow}>
+                  <Text style={styles.subscriptionTier}>{getTierLabel(tier)}</Text>
+                  {isProUser && (
+                    <View style={styles.proBadge}>
+                      <Text style={styles.proBadgeText}>PRO</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.subscriptionHint}>
+                  {isProUser ? 'Manage your subscription' : 'Upgrade to unlock all features'}
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#71717A" />
+          </Pressable>
+        </View>
+
+        {/* Legal Section */}
+        <View style={styles.legalSection}>
+          <Text style={styles.legalSectionTitle}>Legal</Text>
+          <Pressable
+            style={styles.legalCard}
+            onPress={() => router.push('/legal')}
+          >
+            <View style={styles.legalInfo}>
+              <View style={styles.legalIconContainer}>
+                <Ionicons name="document-text" size={24} color="#8B5CF6" />
+              </View>
+              <View style={styles.legalTextContainer}>
+                <Text style={styles.legalTitle}>Legal Documents</Text>
+                <Text style={styles.legalHint}>Privacy Policy & Terms of Service</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#71717A" />
+          </Pressable>
+        </View>
+
+        {/* Sign Out Section */}
+        <View style={styles.signOutSection}>
+          <Pressable
+            style={styles.signOutButton}
+            onPress={handleSignOut}
+            disabled={isLoggingOut}
+          >
+            {isLoggingOut ? (
+              <ActivityIndicator size="small" color="#EF4444" />
+            ) : (
+              <>
+                <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+                <Text style={styles.signOutButtonText}>Sign Out</Text>
+              </>
+            )}
+          </Pressable>
+        </View>
+
+        {/* Danger Zone Section */}
+        <View style={styles.dangerZoneSection}>
+          <Text style={styles.dangerZoneSectionTitle}>Danger Zone</Text>
+          <View style={styles.dangerZoneCard}>
+            <View style={styles.dangerZoneInfo}>
+              <View style={styles.dangerZoneIconContainer}>
+                <Ionicons name="warning" size={24} color="#EF4444" />
+              </View>
+              <View style={styles.dangerZoneTextContainer}>
+                <Text style={styles.dangerZoneTitle}>Delete Account</Text>
+                <Text style={styles.dangerZoneHint}>Permanently delete your account and all data</Text>
+              </View>
+            </View>
+            <Pressable
+              style={styles.deleteAccountButton}
+              onPress={handleOpenDeleteModal}
+            >
+              <Text style={styles.deleteAccountButtonText}>Delete</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -269,6 +488,106 @@ export default function AccountsScreen() {
                   Your credentials are encrypted with AES-256 and never stored in plain text.
                 </Text>
               </View>
+            </ScrollView>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal visible={showDeleteModal} animationType="slide" presentationStyle="pageSheet">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalContainer}
+        >
+          <SafeAreaView style={styles.modalContent} edges={['top', 'bottom']}>
+            <View style={styles.modalHeader}>
+              <Pressable onPress={handleCloseDeleteModal} style={styles.modalCloseButton}>
+                <Ionicons name="close" size={24} color="#FAFAFA" />
+              </Pressable>
+              <Text style={styles.modalTitle}>Delete Account</Text>
+              <View style={{ width: 40 }} />
+            </View>
+
+            <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
+              <View style={styles.deleteWarningIcon}>
+                <Ionicons name="warning" size={48} color="#EF4444" />
+              </View>
+
+              <Text style={styles.deleteWarningTitle}>This action cannot be undone</Text>
+
+              <View style={styles.deleteWarningBox}>
+                <Text style={styles.deleteWarningText}>
+                  Deleting your account will:
+                </Text>
+                <View style={styles.deleteWarningList}>
+                  <Text style={styles.deleteWarningItem}>• Permanently remove all your data</Text>
+                  <Text style={styles.deleteWarningItem}>• Delete your earnings history</Text>
+                  <Text style={styles.deleteWarningItem}>• Remove all connected platform accounts</Text>
+                  <Text style={styles.deleteWarningItem}>• Cancel any active subscriptions</Text>
+                </View>
+              </View>
+
+              <View style={styles.deleteGracePeriodBox}>
+                <Ionicons name="time" size={20} color="#F59E0B" />
+                <View style={styles.deleteGracePeriodText}>
+                  <Text style={styles.deleteGracePeriodTitle}>30-Day Grace Period</Text>
+                  <Text style={styles.deleteGracePeriodDescription}>
+                    Your account will be scheduled for deletion. If you log back in within 30 days, your account will be restored.
+                  </Text>
+                </View>
+              </View>
+
+              {deleteError ? (
+                <View style={styles.deleteErrorBanner}>
+                  <Ionicons name="alert-circle" size={20} color="#EF4444" />
+                  <Text style={styles.deleteErrorText}>{deleteError}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.deleteInputLabel}>
+                  Type <Text style={styles.deleteInputHighlight}>DELETE</Text> to confirm
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.deleteInput,
+                    isDeleteConfirmed && styles.deleteInputConfirmed,
+                  ]}
+                  value={deleteConfirmText}
+                  onChangeText={(text) => {
+                    setDeleteConfirmText(text);
+                    setDeleteError('');
+                  }}
+                  placeholder="DELETE"
+                  placeholderTextColor="#71717A"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  editable={!isDeleting}
+                />
+              </View>
+
+              <Pressable
+                style={[
+                  styles.deleteConfirmButton,
+                  !isDeleteConfirmed && styles.deleteConfirmButtonDisabled,
+                ]}
+                onPress={handleConfirmDelete}
+                disabled={!isDeleteConfirmed || isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator color="#FAFAFA" />
+                ) : (
+                  <>
+                    <Ionicons name="trash" size={20} color="#FAFAFA" />
+                    <Text style={styles.deleteConfirmButtonText}>Delete My Account</Text>
+                  </>
+                )}
+              </Pressable>
+
+              <Pressable style={styles.deleteCancelButton} onPress={handleCloseDeleteModal}>
+                <Text style={styles.deleteCancelButtonText}>Cancel</Text>
+              </Pressable>
             </ScrollView>
           </SafeAreaView>
         </KeyboardAvoidingView>
@@ -500,5 +819,427 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#71717A',
     lineHeight: 18,
+  },
+  profileSection: {
+    marginTop: 32,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#27272A',
+  },
+  profileSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#A1A1AA',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#18181B',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#27272A',
+  },
+  profileInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  profileIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#06B6D420',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileTextContainer: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FAFAFA',
+  },
+  profileEmail: {
+    fontSize: 13,
+    color: '#71717A',
+    marginTop: 2,
+  },
+  signOutSection: {
+    marginTop: 32,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#27272A',
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    paddingVertical: 14,
+    borderRadius: 10,
+  },
+  signOutButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  subscriptionSection: {
+    marginTop: 32,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#27272A',
+  },
+  subscriptionSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#A1A1AA',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  subscriptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#18181B',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#27272A',
+  },
+  subscriptionInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  subscriptionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#27272A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  subscriptionTierRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  subscriptionTier: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FAFAFA',
+  },
+  proBadge: {
+    backgroundColor: '#10b981',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  proBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FAFAFA',
+  },
+  subscriptionHint: {
+    fontSize: 13,
+    color: '#71717A',
+    marginTop: 2,
+  },
+  notificationsSection: {
+    marginTop: 32,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#27272A',
+  },
+  notificationsSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#A1A1AA',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  notificationsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#18181B',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#27272A',
+  },
+  notificationsInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  notificationsIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#F59E0B20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationsTextContainer: {
+    flex: 1,
+  },
+  notificationsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FAFAFA',
+  },
+  notificationsHint: {
+    fontSize: 13,
+    color: '#71717A',
+    marginTop: 2,
+  },
+  legalSection: {
+    marginTop: 32,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#27272A',
+  },
+  legalSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#A1A1AA',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  legalCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#18181B',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#27272A',
+  },
+  legalInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  legalIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#8B5CF620',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  legalTextContainer: {
+    flex: 1,
+  },
+  legalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FAFAFA',
+  },
+  legalHint: {
+    fontSize: 13,
+    color: '#71717A',
+    marginTop: 2,
+  },
+  // Danger Zone Styles
+  dangerZoneSection: {
+    marginTop: 32,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#27272A',
+    marginBottom: 32,
+  },
+  dangerZoneSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  dangerZoneCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#18181B',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EF444440',
+  },
+  dangerZoneInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  dangerZoneIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#EF444420',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dangerZoneTextContainer: {
+    flex: 1,
+  },
+  dangerZoneTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FAFAFA',
+  },
+  dangerZoneHint: {
+    fontSize: 13,
+    color: '#71717A',
+    marginTop: 2,
+  },
+  deleteAccountButton: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  deleteAccountButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FAFAFA',
+  },
+  // Delete Modal Styles
+  deleteWarningIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#EF444420',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  deleteWarningTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  deleteWarningBox: {
+    backgroundColor: '#18181B',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#27272A',
+    marginBottom: 16,
+  },
+  deleteWarningText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FAFAFA',
+    marginBottom: 12,
+  },
+  deleteWarningList: {
+    gap: 8,
+  },
+  deleteWarningItem: {
+    fontSize: 14,
+    color: '#A1A1AA',
+    lineHeight: 20,
+  },
+  deleteGracePeriodBox: {
+    flexDirection: 'row',
+    backgroundColor: '#F59E0B10',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F59E0B40',
+    marginBottom: 24,
+    gap: 12,
+  },
+  deleteGracePeriodText: {
+    flex: 1,
+  },
+  deleteGracePeriodTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#F59E0B',
+    marginBottom: 4,
+  },
+  deleteGracePeriodDescription: {
+    fontSize: 13,
+    color: '#A1A1AA',
+    lineHeight: 18,
+  },
+  deleteErrorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EF444420',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  deleteErrorText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#EF4444',
+  },
+  deleteInputLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#A1A1AA',
+    marginBottom: 8,
+  },
+  deleteInputHighlight: {
+    color: '#EF4444',
+    fontWeight: '700',
+  },
+  deleteInput: {
+    borderColor: '#EF444440',
+  },
+  deleteInputConfirmed: {
+    borderColor: '#10b981',
+  },
+  deleteConfirmButton: {
+    flexDirection: 'row',
+    backgroundColor: '#EF4444',
+    paddingVertical: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  deleteConfirmButtonDisabled: {
+    backgroundColor: '#EF444440',
+  },
+  deleteConfirmButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FAFAFA',
+  },
+  deleteCancelButton: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  deleteCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#71717A',
   },
 });

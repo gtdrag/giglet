@@ -1,0 +1,135 @@
+<story-context id="bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>7</epicId>
+    <storyId>5</storyId>
+    <title>Export Share and Email</title>
+    <status>drafted</status>
+    <generatedAt>2026-01-05</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/7-5-export-share-and-email.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>Pro subscriber with generated tax exports</asA>
+    <iWant>share my mileage logs and earnings summaries via email, Files, or AirDrop</iWant>
+    <soThat>I can easily send documents to my accountant or save them for my records</soThat>
+    <tasks>
+      <task id="1" ac="1">Verify Existing Share Implementation
+        <subtask>Confirm shareFile() is called after successful export in tax-export.tsx</subtask>
+        <subtask>Verify error handling when sharing unavailable</subtask>
+        <subtask>Test share sheet opens with correct file types (CSV/PDF)</subtask>
+      </task>
+      <task id="2" ac="1">Add Share Service Unit Tests
+        <subtask>Create share.test.ts with mocked expo-sharing</subtask>
+        <subtask>Test isSharingAvailable() returns correct values</subtask>
+        <subtask>Test shareFile() handles missing files gracefully</subtask>
+        <subtask>Test shareFile() handles share unavailable case</subtask>
+        <subtask>Test getExportMimeType() returns correct MIME types</subtask>
+      </task>
+      <task id="3" ac="2,3,4">Manual Platform Verification
+        <subtask>Test email attachment on iOS</subtask>
+        <subtask>Test email attachment on Android</subtask>
+        <subtask>Test "Save to Files" on iOS</subtask>
+        <subtask>Test "Save to Files" on Android</subtask>
+        <subtask>Test AirDrop on iOS (if available)</subtask>
+      </task>
+      <task id="4" ac="1">Add Share Analytics Events
+        <subtask>Add analytics event when share sheet opens</subtask>
+        <subtask>Track export format (CSV/PDF) in analytics</subtask>
+      </task>
+      <task id="5" ac="1">Polish Error Messages and UI Feedback
+        <subtask>Improve error message when sharing unavailable</subtask>
+        <subtask>Add success confirmation after share sheet dismissed (optional)</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="7.5.1">Given I have generated an export, When I tap Share, Then the native share sheet appears with sharing options</criterion>
+    <criterion id="7.5.2">Given I share via email, When I send the message, Then the file is attached correctly</criterion>
+    <criterion id="7.5.3">Given I share, When I select "Save to Files", Then the file saves to my chosen location</criterion>
+    <criterion id="7.5.4">Given I share on iOS, When I select AirDrop, Then the file transfers successfully</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path=".bmad-ephemeral/stories/tech-spec-epic-7.md" title="Epic 7 Technical Specification" section="Story 7.5: Export Share and Email">
+        AC 7.5.1-7.5.4 define share sheet integration. Traceability maps to ShareService component. Test ideas include integration tests for share sheet invocation and manual tests for email/Files/AirDrop.
+      </doc>
+      <doc path="docs/architecture.md" title="Architecture Document" section="Technology Stack">
+        Mobile app uses Expo SDK 54 with expo-sharing for native share sheet integration and expo-file-system for file operations.
+      </doc>
+      <doc path=".bmad-ephemeral/stories/7-4-ytd-tax-deduction-display.md" title="Previous Story (7-4)" section="Dev Agent Record">
+        264 tests pass. Testing patterns: use vi.mock() for external modules. tax-export.tsx was modified with YTDSummaryCard integration.
+      </doc>
+    </docs>
+    <code>
+      <file path="apps/mobile/src/services/share.ts" kind="service" symbol="shareFile, isSharingAvailable, getExportMimeType" lines="1-79" reason="Core share service - ALREADY IMPLEMENTED. shareFile() opens native share sheet via expo-sharing. Handles availability check and file existence validation." />
+      <file path="apps/mobile/src/services/export.ts" kind="service" symbol="exportAndShareMileageLog, exportAndShareEarningsSummary" lines="207-230,376-399" reason="Export orchestration - calls shareFile() after generating files. Already integrates share functionality." />
+      <file path="apps/mobile/app/tax-export.tsx" kind="screen" symbol="handleMileageExport, handleEarningsExport" lines="131-141,159-172" reason="UI integration - calls exportAndShareMileageLog() and exportAndShareEarningsSummary() which trigger share sheet on success." />
+      <file path="apps/mobile/src/services/export/csvGenerator.ts" kind="service" symbol="generateMileageCSV" lines="all" reason="CSV generation for mileage exports - file format shared via share sheet." />
+      <file path="apps/mobile/src/services/export/pdfGenerator.ts" kind="service" symbol="generateMileagePDF" lines="all" reason="PDF generation for mileage exports - file format shared via share sheet." />
+      <file path="apps/mobile/src/services/export/earningsCsvGenerator.ts" kind="service" symbol="generateEarningsCSV" lines="all" reason="CSV generation for earnings exports - file format shared via share sheet." />
+      <file path="apps/mobile/src/services/export/earningsPdfGenerator.ts" kind="service" symbol="generateEarningsPDF" lines="all" reason="PDF generation for earnings exports - file format shared via share sheet." />
+    </code>
+    <dependencies>
+      <node>
+        <package name="expo-sharing" version="~14.0.8">Native share sheet integration - core dependency for AC 7.5.1-7.5.4</package>
+        <package name="expo-file-system" version="~19.0.21">File operations for export generation and verification before sharing</package>
+        <package name="expo-print" version="~15.0.x">PDF generation via native WebView</package>
+        <package name="vitest" version="4.0.16">Testing framework for unit tests</package>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint source="architecture.md">Client-Side Generation: Share functionality is entirely client-side using expo-sharing</constraint>
+    <constraint source="tech-spec-epic-7.md">Pro Feature Gating: Export/share features require active Pro subscription (checked via subscriptionStore)</constraint>
+    <constraint source="tech-spec-epic-7.md">File Size Limits: Generated files must be reasonable for email attachment (&lt;10MB)</constraint>
+    <constraint source="tech-spec-epic-7.md">Share sheet only: No direct upload to third-party servers - user controls sharing destination</constraint>
+    <constraint source="tech-spec-epic-7.md">Risk R4: Share sheet compatibility across Android versions - test on Android 8-14; fallback to file save</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="ShareResult" kind="TypeScript interface" path="apps/mobile/src/services/share.ts">
+      interface ShareResult { success: boolean; error?: string; }
+    </interface>
+    <interface name="shareFile" kind="function" path="apps/mobile/src/services/share.ts">
+      shareFile(filePath: string, mimeType?: string): Promise&lt;ShareResult&gt;
+    </interface>
+    <interface name="isSharingAvailable" kind="function" path="apps/mobile/src/services/share.ts">
+      isSharingAvailable(): Promise&lt;boolean&gt;
+    </interface>
+    <interface name="getExportMimeType" kind="function" path="apps/mobile/src/services/share.ts">
+      getExportMimeType(format: 'csv' | 'pdf'): string
+    </interface>
+    <interface name="exportAndShareMileageLog" kind="function" path="apps/mobile/src/services/export.ts">
+      exportAndShareMileageLog(format: ExportFormat, dateRange: DateRange, userName?: string): Promise&lt;ExportResult&gt;
+    </interface>
+    <interface name="exportAndShareEarningsSummary" kind="function" path="apps/mobile/src/services/export.ts">
+      exportAndShareEarningsSummary(format: ExportFormat, dateRange: DateRange, userName?: string): Promise&lt;ExportResult&gt;
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>Vitest 4.0.16 with TypeScript. Use vi.mock() for external modules (expo-sharing, expo-file-system). Follow existing test patterns in src/services/__tests__/. 264 tests currently pass. Unit tests focus on business logic; manual tests verify native platform behavior.</standards>
+    <locations>
+      <location>apps/mobile/src/services/__tests__/*.test.ts</location>
+      <location>apps/mobile/src/services/export/__tests__/*.test.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="7.5.1">Unit: Test shareFile() calls Sharing.shareAsync() with correct parameters (filePath, mimeType)</idea>
+      <idea ac="7.5.1">Unit: Test shareFile() returns error when Sharing.isAvailableAsync() returns false</idea>
+      <idea ac="7.5.1">Unit: Test shareFile() returns error when file does not exist</idea>
+      <idea ac="7.5.1">Unit: Test getExportMimeType() returns 'text/csv' for csv format</idea>
+      <idea ac="7.5.1">Unit: Test getExportMimeType() returns 'application/pdf' for pdf format</idea>
+      <idea ac="7.5.1">Unit: Test isSharingAvailable() returns boolean from expo-sharing</idea>
+      <idea ac="7.5.1">Integration: Test exportAndShareMileageLog() calls shareFile() after successful generation</idea>
+      <idea ac="7.5.1">Integration: Test exportAndShareEarningsSummary() calls shareFile() after successful generation</idea>
+      <idea ac="7.5.2">Manual: Generate CSV export, share via email, verify attachment arrives correctly</idea>
+      <idea ac="7.5.2">Manual: Generate PDF export, share via email, verify attachment arrives correctly</idea>
+      <idea ac="7.5.3">Manual: Share export, select "Save to Files", verify file appears in chosen location</idea>
+      <idea ac="7.5.4">Manual: On iOS device, share export via AirDrop, verify file transfers to receiving device</idea>
+    </ideas>
+  </tests>
+</story-context>

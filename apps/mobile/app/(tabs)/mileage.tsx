@@ -7,6 +7,10 @@ import { useMileageStore, type CompletedTrip, type PeriodType } from '../../src/
 import { TripDetailModal } from '../../src/components/TripDetailModal';
 import { ManualTripModal, type ManualTripData } from '../../src/components/ManualTripModal';
 import { MileageStatsCardCompact } from '../../src/components/MileageStatsCard';
+import { YTDSummaryCard } from '../../src/components/YTDSummaryCard';
+import { IRSRateInfoModal } from '../../src/components/IRSRateInfoModal';
+import { PaywallModal } from '../../src/components/subscriptions/PaywallModal';
+import { useSubscription } from '../../src/hooks/useSubscription';
 import { IRS_MILEAGE_RATE, formatTaxDeduction } from '../../src/constants/tax';
 import { saveManualTrip, updateTrip, deleteTrip, type TripUpdate } from '../../src/utils/locationStorage';
 
@@ -41,6 +45,11 @@ export default function MileagePage() {
   const [selectedTrip, setSelectedTrip] = useState<CompletedTrip | null>(null);
   const [showTripDetail, setShowTripDetail] = useState(false);
   const [showManualTripModal, setShowManualTripModal] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [showIRSInfoModal, setShowIRSInfoModal] = useState(false);
+
+  // Subscription state - auto-tracking is a Pro feature
+  const { canAccess } = useSubscription();
 
   // Period stats data for display
   const periodStats = {
@@ -59,8 +68,13 @@ export default function MileagePage() {
   }, [checkPermission, loadTripStats]);
 
   const handleEnableTracking = useCallback(() => {
+    // Check if user can access auto-tracking (Pro feature)
+    if (!canAccess('autoMileageTracking')) {
+      setShowPaywall(true);
+      return;
+    }
     setShowPermissionModal(true);
-  }, []);
+  }, [canAccess]);
 
   const handleConfirmEnable = useCallback(async () => {
     setShowPermissionModal(false);
@@ -238,6 +252,14 @@ export default function MileagePage() {
             ))}
           </ScrollView>
 
+          {/* YTD Tax Summary Card */}
+          <YTDSummaryCard
+            yearMiles={yearMiles}
+            yearTrips={yearTrips}
+            isLoading={isLoading}
+            onInfoPress={() => setShowIRSInfoModal(true)}
+          />
+
           {/* Selected Period Summary Card */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -258,6 +280,20 @@ export default function MileagePage() {
               Based on 2024 IRS rate of ${IRS_MILEAGE_RATE}/mile
             </Text>
           </View>
+
+          {/* Tax Export Link */}
+          <Pressable style={styles.exportLinkCard} onPress={() => router.push('/tax-export' as any)}>
+            <View style={styles.exportLinkContent}>
+              <View style={[styles.cardIconContainer, { backgroundColor: '#1A2E05' }]}>
+                <Ionicons name="document-text" size={20} color="#22C55E" />
+              </View>
+              <View style={styles.exportLinkText}>
+                <Text style={styles.exportLinkTitle}>Export Mileage Log</Text>
+                <Text style={styles.exportLinkSubtitle}>Generate IRS-compliant report</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#71717A" />
+          </Pressable>
 
           {/* Recent Trips Card */}
           <View style={styles.card}>
@@ -560,6 +596,19 @@ export default function MileagePage() {
         visible={showManualTripModal}
         onClose={() => setShowManualTripModal(false)}
         onSave={handleSaveManualTrip}
+      />
+
+      {/* Paywall Modal for Pro Features */}
+      <PaywallModal
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        feature="autoMileageTracking"
+      />
+
+      {/* IRS Rate Info Modal */}
+      <IRSRateInfoModal
+        visible={showIRSInfoModal}
+        onClose={() => setShowIRSInfoModal(false)}
       />
     </SafeAreaView>
   );
@@ -1077,5 +1126,33 @@ const styles = StyleSheet.create({
   modalListItem: {
     fontSize: 14,
     color: '#A1A1AA',
+  },
+  // Export Link Card
+  exportLinkCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#18181B',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#27272A',
+  },
+  exportLinkContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  exportLinkText: {
+    gap: 2,
+  },
+  exportLinkTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FAFAFA',
+  },
+  exportLinkSubtitle: {
+    fontSize: 12,
+    color: '#71717A',
   },
 });

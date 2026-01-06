@@ -40,6 +40,7 @@ export interface AuthUser {
 export interface AuthResult {
   user: AuthUser;
   tokens: AuthTokens;
+  accountRecovered?: boolean; // True if account was pending deletion and recovered
 }
 
 class AuthService {
@@ -99,10 +100,23 @@ class AuthService {
       throw errors.unauthorized('Invalid email or password');
     }
 
+    // Check if account was hard deleted (deletionScheduledAt is in the past)
+    if (user.deletionScheduledAt && user.deletionScheduledAt < new Date()) {
+      throw errors.unauthorized('This account has been deleted');
+    }
+
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
     if (!isValidPassword) {
       throw errors.unauthorized('Invalid email or password');
+    }
+
+    // Check if account is pending deletion and recover it
+    let accountRecovered = false;
+    if (user.deletionScheduledAt) {
+      await this.cancelDeletion(user.id);
+      accountRecovered = true;
+      logger.info('Account recovered during login', { userId: user.id });
     }
 
     // Generate tokens
@@ -115,6 +129,7 @@ class AuthService {
         name: user.name,
       },
       tokens,
+      accountRecovered,
     };
   }
 
@@ -411,6 +426,56 @@ class AuthService {
     ]);
 
     logger.info('Password reset successful', { userId: resetToken.userId });
+  }
+
+  /**
+   * Delete user account (soft delete with 30-day grace period)
+   * Sets deletionScheduledAt and invalidates all tokens
+   */
+  async deleteAccount(userId: string): Promise<{ deletionScheduledAt: Date }> {
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw errors.notFound('User not found');
+    }
+
+    // Calculate deletion date (30 days from now)
+    const deletionScheduledAt = new Date();
+    deletionScheduledAt.setDate(deletionScheduledAt.getDate() + 30);
+
+    // Update user and invalidate all tokens in a transaction
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: { deletionScheduledAt },
+      }),
+      // Delete all refresh tokens for this user
+      prisma.refreshToken.deleteMany({
+        where: { userId },
+      }),
+    ]);
+
+    logger.info('Account deletion scheduled', {
+      userId,
+      deletionScheduledAt,
+    });
+
+    return { deletionScheduledAt };
+  }
+
+  /**
+   * Cancel account deletion (called when user logs back in within grace period)
+   */
+  async cancelDeletion(userId: string): Promise<void> {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { deletionScheduledAt: null },
+    });
+
+    logger.info('Account deletion cancelled', { userId });
   }
 
   /**
