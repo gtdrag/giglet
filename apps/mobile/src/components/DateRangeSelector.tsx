@@ -14,7 +14,9 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
 import {
   DateRange,
   DateRangePreset,
@@ -51,7 +53,7 @@ export function DateRangeSelector({ value, onChange }: DateRangeSelectorProps) {
   );
 
   const handleStartDateChange = useCallback(
-    (_event: any, date?: Date) => {
+    (_event: DateTimePickerEvent, date?: Date) => {
       if (Platform.OS === 'android') {
         setShowStartPicker(false);
       }
@@ -68,7 +70,7 @@ export function DateRangeSelector({ value, onChange }: DateRangeSelectorProps) {
   );
 
   const handleEndDateChange = useCallback(
-    (_event: any, date?: Date) => {
+    (_event: DateTimePickerEvent, date?: Date) => {
       if (Platform.OS === 'android') {
         setShowEndPicker(false);
       }
