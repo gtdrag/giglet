@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 // Android emulator uses 10.0.2.2 to reach host, iOS simulator uses localhost
 const getApiBaseUrl = () => {
   if (!__DEV__) {
-    return 'https://api.giglet.app/api/v1';
+    return 'https://api-gtdrags-projects.vercel.app/api/v1';
   }
 
   // Use environment variable if set
