@@ -1,4 +1,4 @@
-import { Worker, Job } from 'bullmq';
+import { Worker, Job, ConnectionOptions } from 'bullmq';
 import { getRedisConnection } from '../lib/redis';
 import { PLATFORM_SYNC_QUEUE, PlatformSyncJobData } from '../lib/queue';
 import { processPlatformSync } from './platform-sync.job';
@@ -44,7 +44,7 @@ export function startWorker(): void {
       }
     },
     {
-      connection: getRedisConnection(),
+      connection: getRedisConnection() as unknown as ConnectionOptions,
       concurrency: 2, // Process 2 jobs at a time
       limiter: {
         max: 10, // Max 10 jobs per minute

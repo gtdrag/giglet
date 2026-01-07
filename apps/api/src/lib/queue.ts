@@ -1,4 +1,4 @@
-import { Queue, QueueEvents } from 'bullmq';
+import { Queue, QueueEvents, ConnectionOptions } from 'bullmq';
 import { getRedisConnection } from './redis';
 import { logger } from '../utils/logger';
 
@@ -18,7 +18,7 @@ export interface PlatformSyncJobData {
 export function getPlatformSyncQueue(): Queue<PlatformSyncJobData> {
   if (!platformSyncQueue) {
     platformSyncQueue = new Queue<PlatformSyncJobData>(PLATFORM_SYNC_QUEUE, {
-      connection: getRedisConnection(),
+      connection: getRedisConnection() as unknown as ConnectionOptions,
       defaultJobOptions: {
         attempts: 3,
         backoff: {
@@ -43,7 +43,7 @@ export function getPlatformSyncQueue(): Queue<PlatformSyncJobData> {
 export function getPlatformSyncQueueEvents(): QueueEvents {
   if (!platformSyncQueueEvents) {
     platformSyncQueueEvents = new QueueEvents(PLATFORM_SYNC_QUEUE, {
-      connection: getRedisConnection(),
+      connection: getRedisConnection() as unknown as ConnectionOptions,
     });
   }
 
